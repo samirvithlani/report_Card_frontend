@@ -2,9 +2,14 @@ import React from "react"
 import { createBrowserRouter, RouterProvider } from "react-router-dom"
 import Header from "../header/Header"
 import { MainDashBoard } from "../dashboard/MainDashBoard"
+import {Login} from "../../login/Login"
 
 const MainRouter = ({children}) => {
     const routesData =createBrowserRouter([
+        {
+            path:"/login",
+            element:<Login/>
+        },
         {
             path:"/",
             element :<Header/>,

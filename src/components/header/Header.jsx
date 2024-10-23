@@ -27,7 +27,7 @@ const Header = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorElInternship, setAnchorElInternship] = useState(null);
   const [anchorElJobs, setAnchorElJobs] = useState(null);
-  const [token, setToken] = useState(Cookies.get("token"));
+  const [token, setToken] = useState(localStorage.getItem("faculty_id"));
   //const { showToast, ToastComponent } = useToast();
   const navigate = useNavigate();
 
@@ -43,7 +43,7 @@ const Header = () => {
 
   const logoutHandler = async () => {
     Cookies.remove("token");
-    Cookies.remove("id");
+    Cookies.remove("faculty_id");
     setToken(null);
     navigate("/login");
   };
@@ -107,7 +107,7 @@ const Header = () => {
             <>
               <IconButton
                 onClick={handleInternshipClick}
-                sx={{ color: "#825DE8" }}
+                sx={{ color: "#1A5774" }}
               >
                 <Typography>Home</Typography>
               </IconButton>
@@ -174,15 +174,15 @@ const Header = () => {
                   onClick={() => logoutHandler()}
                   variant="outlined"
                   color="primary"
-                  sx={{ color: "#825DE8", borderColor: "black" }}
+                  sx={{ color: "#1A5774", borderColor: "black" }}
                 >
                   Logout
                 </Button>
-                <IconButton onClick={handleProfileClick} sx={{ p: 0 }}>
-                  <Avatar sx={{ bgcolor: "#825DE8" }} alt="Profile">
+                {/* <IconButton onClick={handleProfileClick} sx={{ p: 0 }}>
+                  <Avatar sx={{ bgcolor: "#1A5774" }} alt="Profile">
                     <AccountCircleIcon />
                   </Avatar>
-                </IconButton>
+                </IconButton> */}
               </>
             )}
           </Box>

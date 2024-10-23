@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { act, useEffect, useState } from "react";
 import {
   Box,
   Grid,
@@ -14,6 +14,11 @@ import {
   TableRow,
   TextField,
   Button,
+  List,
+  ListItem,
+  ListItemText,
+  Avatar,
+  IconButton,
 } from "@mui/material";
 import {
   BarChart,
@@ -25,31 +30,35 @@ import {
 } from "recharts";
 import myimg from "../../assets/images/samir.jpeg";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import { PhotoCamera } from "@mui/icons-material";
 
 export const MainDashBoard = () => {
-  // Sample marks data
-  const marksData = [
-    {
-      subject: "Punctuality",
-      marks: Math.floor(Math.random() * 10),
-      outOf: 10,
-    },
-    {
-      subject: "Regular Sessions",
-      marks: Math.floor(Math.random() * 10),
-      outOf: 10,
-    },
-    {
-      subject: "Communication in Sessions",
-      marks: Math.floor(Math.random() * 10),
-      outOf: 10,
-    },
-    {
-      subject: "Test Marks Average",
-      marks: Math.floor(Math.random() * 100),
-      outOf: 100,
-    },
-  ];
+  //Sample marks data
+  // const marksData = [
+  //   {
+  //     subject: "Punctuality",
+  //     marks: Math.floor(Math.random() * 10),
+  //     outOf: 10,
+  //   },
+  //   {
+  //     subject: "Regular Sessions",
+  //     marks: Math.floor(Math.random() * 10),
+  //     outOf: 10,
+  //   },
+  //   {
+  //     subject: "Communication in Sessions",
+  //     marks: Math.floor(Math.random() * 10),
+  //     outOf: 10,
+  //   },
+  //   {
+  //     subject: "Test Marks Average",
+  //     marks: Math.floor(Math.random() * 100),
+  //     outOf: 100,
+  //   },
+  // ];
+
+  const [marksData, setmarksData] = useState([]);
 
   // Sample extra-curricular data
   const extraCurricularData = [
@@ -75,23 +84,174 @@ export const MainDashBoard = () => {
     },
   ];
 
-  const [searchData, setsearchData] = useState()
-  const searchHandler = async() => {
-    console.log(name)
-    const res = await axios.post("http://localhost:3000/student-report/search",{
-      firstName: name,
-      facultyId: "6716575ecbf3d072d9b087d5"
-    })
-    //console.log(res.data)
-    setsearchData(res.data)
+  const [searchData, setsearchData] = useState();
+  const [searchPresses, setsearchPresses] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [studentData, setstudentData] = useState({});
+  const [finalScore, setfinalScore] = useState(0);
+  const [activites, setactivites] = useState([]);
+  const [facultyId, setfacultyId] = useState();
+  const [studentImage, setstudentImage] = useState();
 
-  }
-  const [name, setName] = useState("")
+  const handleSuggestionClick = async (suggestion) => {
+    // Print the student ID on the console
+    console.log("Selected suggestion:", suggestion);
+    console.log("Student ID:", suggestion.id); // Log the ID
+    console.log(suggestion.name.split("  ")); // If you want to split the name as well
+
+    // Set the name as the selected suggestion and clear suggestions
+    setName(suggestion.name);
+    setSuggestions([]);
+
+    const res = await axios.post(
+      `/student-report/search-by-id`,
+      {
+        studentId: suggestion.id,
+        facultyId: localStorage.getItem("faculty_id"),
+      }
+    );
+    console.log("student data response...", res.data);
+    if (res.data?.length > 0) {
+      //alert("No data found");
+      setstudentData(res?.data[0]);
+      console.log("student data...", studentData);
+      setstudentImage(res?.data[0]?.studentDetails?.image);
+      let marks = [
+        {
+          subject: "Discipline",
+          marks: res?.data[0]?.discipline, // Replace with actual field from the response
+          outOf: 5,
+        },
+        {
+          subject: "Regular Sessions",
+          marks: res?.data[0]?.regularity, // Replace with actual field from the response
+          outOf: 5,
+        },
+        {
+          subject: "Communication in Sessions",
+          marks: res?.data[0]?.communication, // Replace with actual field from the response
+          outOf: 5,
+        },
+        {
+          subject: "Test Performance",
+          marks: res?.data[0]?.testPerformance, // Replace with actual field from the response
+          outOf: 5,
+        },
+      ];
+      var total = marks.reduce((total, item) => total + item.marks, 0);
+      var finalPercentage = (total / 20) * 100;
+      setfinalScore(finalPercentage);
+      //console.log("final percentage...",finalPercentage);
+      //alert("Total Marks: "+total+"  Final Percentage: "+finalPercentage);
+      console.log("marks data...", marks);
+      setmarksData(marks);
+
+      //activities
+
+      setactivites([
+        {
+          activity: "Attendance",
+          marks: res?.data[0]?.attendance,
+          outOf: 5,
+          grade: res?.data[0]?.attendance >= 4 ? "A" : "B",
+        },
+        {
+          activity: "Discipline",
+          marks: res?.data[0]?.discipline,
+          outOf: 5,
+          grade: res?.data[0]?.discipline >= 4 ? "A" : "B",
+        },
+        {
+          activity: "Regular Sessions",
+          marks: res?.data[0]?.regularity,
+          outOf: 5,
+          grade: res?.data[0]?.regularity >= 4 ? "A" : "B",
+        },
+      ]);
+    }
+  };
+
+  const handleInputChange = async (e) => {
+    const searchText = e.target.value;
+    setName(searchText);
+
+    console.log(name);
+
+    try {
+      const res = await axios.post(
+        "/student-report/search",
+        {
+          firstName: searchText,
+          facultyId: localStorage.getItem("faculty_id"),
+        }
+      );
+
+      console.log(res.data);
+      setsearchData(res.data);
+
+      if (searchText) {
+        // Filter by first name and create an object with name and id
+        const filteredSuggestions = res.data
+          .filter((suggestion) =>
+            suggestion.studentDetails.firstName
+              .toLowerCase()
+              .startsWith(searchText.toLowerCase())
+          )
+          .map((suggestion) => ({
+            name:
+              suggestion.studentDetails.firstName +
+              "  " +
+              suggestion.studentDetails.lastName +
+              "  Mobile  " +
+              suggestion.studentDetails.mobile,
+            id: suggestion.studentDetails._id, // Include the ID here
+          }));
+
+        setSuggestions(filteredSuggestions); // Store suggestions with names and IDs
+      } else {
+        setSuggestions([]);
+      }
+    } catch (error) {
+      console.error("Error fetching suggestions:", error);
+    }
+  };
+
+  const handleUploadImage = async (e) => {
+
+
+
+  };
+
+  // const searchHandler = async () => {
+  //   console.log(name);
+  //   const res = await axios.post(
+  //     "/student-report/search",
+  //     {
+  //       firstName: name,
+  //       facultyId: "6718af3ab9e64e772962dc62",
+  //     }
+  //   );
+  //   console.log(res.data);
+
+  //   setsearchData(res.data);
+  // };
+  const [name, setName] = useState("");
   // Function to generate star rating
   const getStarRating = (marks, outOf) => {
     const rating = Math.round((marks / outOf) * 5); // Convert to a scale of 5
     return "★".repeat(rating) + "☆".repeat(5 - rating); // Return stars based on rating
   };
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const facultyId = localStorage.getItem("faculty_id");
+    if (facultyId) {
+      setfacultyId(facultyId);
+    } else {
+      alert("Please login first");
+      navigate("/login");
+    }
+  }, []);
 
   return (
     <Box>
@@ -109,7 +269,7 @@ export const MainDashBoard = () => {
         <TextField
           variant="outlined"
           placeholder="Search..."
-          onChange={(e)=>{setName(e.target.value)}}
+          onChange={handleInputChange}
           sx={{
             width: { xs: "80%", sm: "50%", md: "30%" },
             "& .MuiOutlinedInput-root": {
@@ -133,7 +293,7 @@ export const MainDashBoard = () => {
             },
           }}
         />
-        <Button
+        {/* <Button
           variant="contained"
           sx={{
             backgroundColor: "#1A5774",
@@ -142,10 +302,34 @@ export const MainDashBoard = () => {
             padding: "10px 20px",
             marginLeft: "10px",
           }}
-          onClick={()=>{searchHandler()}}
+          onClick={() => {
+            searchHandler();
+          }}
         >
           Search
-        </Button>
+        </Button> */}
+        <Paper
+          sx={{
+            position: "absolute",
+            top: "80px",
+            width: "80%",
+            zIndex: 10,
+            maxHeight: "200px",
+            overflowY: "auto",
+          }}
+        >
+          <List>
+            {suggestions.map((suggestion, index) => (
+              <ListItem
+                button
+                key={index}
+                onClick={() => handleSuggestionClick(suggestion)}
+              >
+                <ListItemText primary={suggestion.name} />
+              </ListItem>
+            ))}
+          </List>
+        </Paper>
       </Box>
 
       <Box
@@ -201,18 +385,60 @@ export const MainDashBoard = () => {
                     >
                       Student Details
                     </Typography>
+
+                    {/* Centering image or avatar */}
                     <Box
-                      component="img"
-                      src={myimg}
-                      alt="Student"
                       sx={{
-                        borderRadius: "50%",
-                        width: { xs: "120px", md: "140px" },
-                        height: { xs: "120px", md: "140px" },
-                        objectFit: "cover",
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        flexDirection: "column",
                       }}
-                    />
+                    >
+                      {/* Conditional rendering for student image */}
+                      {studentImage ? (
+                        <Box
+                          component="img"
+                          src={studentImage}
+                          alt="Student"
+                          sx={{
+                            borderRadius: "50%",
+                            width: { xs: "120px", md: "140px" },
+                            height: { xs: "120px", md: "140px" },
+                            objectFit: "cover",
+                          }}
+                        />
+                      ) : (
+                        <Avatar
+                          sx={{
+                            width: { xs: "120px", md: "140px" },
+                            height: { xs: "120px", md: "140px" },
+                            fontSize: "50px",
+                            backgroundColor: "#1A5774",
+                          }}
+                        >
+                          {studentData?.studentDetails?.firstName?.charAt(0)}
+                        </Avatar>
+                      )}
+
+                      {/* Upload icon for image */}
+                      <IconButton
+                        color="primary"
+                        aria-label="upload picture"
+                        component="label"
+                        sx={{ mt: 2 }}
+                      >
+                        <input
+                          hidden
+                          accept="image/*"
+                          type="file"
+                          onChange={handleUploadImage}
+                        />
+                        <PhotoCamera />
+                      </IconButton>
+                    </Box>
                   </Grid>
+
                   <Grid item xs={12}>
                     <Grid container spacing={2}>
                       {/* Adjusting details to show 3x3 layout */}
@@ -220,31 +446,33 @@ export const MainDashBoard = () => {
                         <Typography sx={{ fontWeight: "bold" }}>
                           Name:
                         </Typography>
-                        <Typography variant="body1">Neha Verma</Typography>
+                        <Typography variant="body1">
+                          {studentData?.studentDetails?.firstName}
+                        </Typography>
                       </Grid>
                       <Grid item xs={6} sm={4}>
                         <Typography sx={{ fontWeight: "bold" }}>
-                          Class:
+                          College:
                         </Typography>
-                        <Typography variant="body1">191</Typography>
+                        <Typography variant="body1">
+                          {studentData?.studentDetails?.collageName}
+                        </Typography>
                       </Grid>
                       <Grid item xs={6} sm={4}>
                         <Typography sx={{ fontWeight: "bold" }}>
                           Batch:
                         </Typography>
-                        <Typography variant="body1">2020-2023</Typography>
+                        <Typography variant="body1">
+                          {studentData?.studentDetails?.batch}
+                        </Typography>
                       </Grid>
                       <Grid item xs={6} sm={4}>
                         <Typography sx={{ fontWeight: "bold" }}>
-                          Gender:
+                          Mobile:
                         </Typography>
-                        <Typography variant="body1">Female</Typography>
-                      </Grid>
-                      <Grid item xs={6} sm={4}>
-                        <Typography sx={{ fontWeight: "bold" }}>
-                          Date of Birth:
+                        <Typography variant="body1">
+                          {studentData?.studentDetails?.mobile}
                         </Typography>
-                        <Typography variant="body1">01/01/2000</Typography>
                       </Grid>
                       <Grid item xs={6} sm={4}>
                         <Typography sx={{ fontWeight: "bold" }}>
@@ -254,7 +482,7 @@ export const MainDashBoard = () => {
                           variant="body1"
                           sx={{ wordBreak: "break-word" }}
                         >
-                          neha@example.com
+                          {studentData?.studentDetails?.email}
                         </Typography>
                       </Grid>
                     </Grid>
@@ -365,10 +593,10 @@ export const MainDashBoard = () => {
                 >
                   <CircularProgress
                     variant="determinate"
-                    value={82}
+                    value={finalScore}
                     sx={{ color: "#1A5774" }}
                   />
-                  <Typography variant="h5">82%</Typography>
+                  <Typography variant="h5">{finalScore} %</Typography>
                 </Box>
               </Paper>
 
@@ -378,8 +606,27 @@ export const MainDashBoard = () => {
               >
                 {/* Activities & Conduct Section */}
                 <Typography variant="h6">Activities & Conduct</Typography>
+                {activites.map((item) => {
+                  return (
+                    <>
+                      <Typography>
+                        {item.activity} {item.grade}
+                      </Typography>
+                      <LinearProgress
+                        variant="determinate"
+                        value={(item.marks / item.outOf) * 100}
+                        sx={{
+                          marginBottom: "10px",
+                          "& .MuiLinearProgress-bar": {
+                            backgroundColor: "#1A5774",
+                          },
+                        }}
+                      />
+                    </>
+                  );
+                })}
 
-                <Typography>Attendance: A</Typography>
+                {/* <Typography>Attendance: A</Typography>
                 <LinearProgress
                   variant="determinate"
                   value={91}
@@ -407,7 +654,7 @@ export const MainDashBoard = () => {
                     marginBottom: "10px",
                     "& .MuiLinearProgress-bar": { backgroundColor: "#1A5774" },
                   }}
-                />
+                /> */}
               </Paper>
 
               <Paper
@@ -448,7 +695,7 @@ export const MainDashBoard = () => {
                   Marks Distribution:
                 </Typography>
                 <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={extraCurricularData}>
+                  <BarChart data={marksData}>
                     <XAxis dataKey="activity" />
                     <YAxis />
                     <Tooltip />
