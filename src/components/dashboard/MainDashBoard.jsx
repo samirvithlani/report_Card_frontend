@@ -32,6 +32,7 @@ import myimg from "../../assets/images/samir.jpeg";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { PhotoCamera } from "@mui/icons-material";
+import { set } from "react-hook-form";
 
 export const MainDashBoard = () => {
   //Sample marks data
@@ -103,19 +104,16 @@ export const MainDashBoard = () => {
     setName(suggestion.name);
     setSuggestions([]);
 
-    const res = await axios.post(
-      `/student-report/search-by-id`,
-      {
-        studentId: suggestion.id,
-        facultyId: localStorage.getItem("faculty_id"),
-      }
-    );
+    const res = await axios.post(`/student-report/search-by-id`, {
+      studentId: suggestion.id,
+      facultyId: localStorage.getItem("faculty_id"),
+    });
     console.log("student data response...", res.data);
     if (res.data?.length > 0) {
       //alert("No data found");
       setstudentData(res?.data[0]);
       console.log("student data...", studentData);
-      setstudentImage(res?.data[0]?.studentDetails?.image);
+      setstudentImage(res?.data[0]?.studentDetails?.studentImage);
       let marks = [
         {
           subject: "Discipline",
@@ -150,22 +148,22 @@ export const MainDashBoard = () => {
 
       setactivites([
         {
-          activity: "Attendance",
-          marks: res?.data[0]?.attendance,
+          activity: "Test Perfomance",
+          marks: res?.data[0]?.testPerformance,
           outOf: 5,
-          grade: res?.data[0]?.attendance >= 4 ? "A" : "B",
+          grade: res?.data[0]?.testPerformance > 4 ? "A" : res?.data[0]?.testPerformance > 3 ? "B" : "C",
         },
         {
           activity: "Discipline",
           marks: res?.data[0]?.discipline,
           outOf: 5,
-          grade: res?.data[0]?.discipline >= 4 ? "A" : "B",
+          grade: res?.data[0]?.discipline > 4 ? "A" : res?.data[0]?.discipline > 3 ? "B" : "C",
         },
         {
           activity: "Regular Sessions",
           marks: res?.data[0]?.regularity,
           outOf: 5,
-          grade: res?.data[0]?.regularity >= 4 ? "A" : "B",
+          grade: res?.data[0]?.regularity > 4 ? "A" : res?.data[0]?.regularity > 3 ? "B" : "C",
         },
       ]);
     }
@@ -178,13 +176,10 @@ export const MainDashBoard = () => {
     console.log(name);
 
     try {
-      const res = await axios.post(
-        "/student-report/search",
-        {
-          firstName: searchText,
-          facultyId: localStorage.getItem("faculty_id"),
-        }
-      );
+      const res = await axios.post("/student-report/search", {
+        firstName: searchText,
+        facultyId: localStorage.getItem("faculty_id"),
+      });
 
       console.log(res.data);
       setsearchData(res.data);
@@ -217,9 +212,21 @@ export const MainDashBoard = () => {
   };
 
   const handleUploadImage = async (e) => {
+    const studentId = studentData?.studentDetails?._id;
+    console.log("student id...", studentId);
+    const facultyId = localStorage.getItem("faculty_id");
+    console.log("faculty id...", facultyId);
 
+    const formData = new FormData();
+    formData.append("studentId", studentId);
+    formData.append("facultyId", facultyId);
+    //formData.append("file", e.target.files[0]);
+    formData.append("file",e.target.files[0]);
+    console.log("file",e.target.files[0]);
 
-
+    const res = await axios.post("/student/upload-image", formData);
+    console.log("image upload response...", res);
+    setstudentImage(res.data.studentImage);
   };
 
   // const searchHandler = async () => {
@@ -599,105 +606,45 @@ export const MainDashBoard = () => {
                   <Typography variant="h5">{finalScore} %</Typography>
                 </Box>
               </Paper>
+              <Paper elevation={3} sx={{ padding: "16px", marginBottom: "10px" }}>
+  {/* Activities & Conduct Section */}
+  <Typography variant="h6">Activities & Conduct</Typography>
+  {activites.map((item) => {
+    const progressValue = (item.marks / 5) * 100; // Assuming marks are out of 5
 
-              <Paper
-                elevation={3}
-                sx={{ padding: "16px", marginBottom: "10px" }}
-              >
-                {/* Activities & Conduct Section */}
-                <Typography variant="h6">Activities & Conduct</Typography>
-                {activites.map((item) => {
-                  return (
-                    <>
-                      <Typography>
-                        {item.activity} {item.grade}
-                      </Typography>
-                      <LinearProgress
-                        variant="determinate"
-                        value={(item.marks / item.outOf) * 100}
-                        sx={{
-                          marginBottom: "10px",
-                          "& .MuiLinearProgress-bar": {
-                            backgroundColor: "#1A5774",
-                          },
-                        }}
-                      />
-                    </>
-                  );
-                })}
+    return (
+      <div key={item.activity}>
+        <Typography>
+          {item.activity}: {item.marks}/5 ({item.grade})
+        </Typography>
+        <LinearProgress
+          variant="determinate"
+          value={progressValue} // Calculate progress out of 5
+          sx={{
+            marginBottom: "10px",
+            "& .MuiLinearProgress-bar": {
+              backgroundColor: "#1A5774",
+            },
+          }}
+        />
+      </div>
+    );
+  })}
+</Paper>
 
-                {/* <Typography>Attendance: A</Typography>
-                <LinearProgress
-                  variant="determinate"
-                  value={91}
-                  sx={{
-                    marginBottom: "10px",
-                    "& .MuiLinearProgress-bar": { backgroundColor: "#1A5774" },
-                  }}
-                />
-
-                <Typography>Punctuality: B</Typography>
-                <LinearProgress
-                  variant="determinate"
-                  value={85}
-                  sx={{
-                    marginBottom: "10px",
-                    "& .MuiLinearProgress-bar": { backgroundColor: "#1A5774" },
-                  }}
-                />
-
-                <Typography>Neat & Orderly: A+</Typography>
-                <LinearProgress
-                  variant="determinate"
-                  value={97}
-                  sx={{
-                    marginBottom: "10px",
-                    "& .MuiLinearProgress-bar": { backgroundColor: "#1A5774" },
-                  }}
-                /> */}
-              </Paper>
 
               <Paper
                 elevation={3}
                 sx={{ padding: "16px", flexGrow: 1, marginBottom: "10px" }}
               >
-                {/* Extra-Curricular Activities Section */}
-                {/* <Typography variant="h6">
-                  Extra-Curricular Activities
-                </Typography>
-                <TableContainer
-                  component={Paper}
-                  sx={{
-                    maxHeight: "200px",
-                    overflowY: "auto",
-                    marginBottom: 2,
-                  }}
-                >
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Activity</TableCell>
-                        <TableCell align="right">Marks</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {extraCurricularData.map((item, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{item.subject}</TableCell>
-                          <TableCell align="right">{item.marks}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer> */}
-                {/* Extra-Curricular Activities Chart */}
+             
                 <Typography variant="body1" sx={{ marginBottom: 1 }}>
                   Marks Distribution:
                 </Typography>
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={marksData}>
                     <XAxis dataKey="activity" />
-                    <YAxis />
+                    <YAxis domain={[0,5]} />
                     <Tooltip />
                     <Bar dataKey="marks" fill="#82ca9d" />
                   </BarChart>

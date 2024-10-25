@@ -119,6 +119,7 @@ export const Login = () => {
       const res = await axios.post("/faculty/login", data);
       console.log("faculty....",res.data.data);
       localStorage.setItem("faculty_id", res.data.data._id);
+      localStorage.setItem("facultyData", JSON.stringify(res.data.data));
       
       
         navigate("/");
