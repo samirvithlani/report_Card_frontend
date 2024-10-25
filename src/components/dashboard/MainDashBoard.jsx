@@ -19,6 +19,9 @@ import {
   ListItemText,
   Avatar,
   IconButton,
+  Modal,
+  FormControl,
+  MenuItem, Select, InputLabel,
 } from "@mui/material";
 import {
   BarChart,
@@ -27,15 +30,17 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  
 } from "recharts";
 import myimg from "../../assets/images/samir.jpeg";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { PhotoCamera } from "@mui/icons-material";
-import { set } from "react-hook-form";
+import { set, useForm } from "react-hook-form";
+import { Loader } from "../common/loader/Loader";
+import EditIcon from "@mui/icons-material/Edit";
 
 export const MainDashBoard = () => {
-  //Sample marks data
   // const marksData = [
   //   {
   //     subject: "Punctuality",
@@ -62,28 +67,6 @@ export const MainDashBoard = () => {
   const [marksData, setmarksData] = useState([]);
 
   // Sample extra-curricular data
-  const extraCurricularData = [
-    {
-      subject: "Punctuality",
-      marks: Math.floor(Math.random() * 10),
-      outOf: 10,
-    },
-    {
-      subject: "Regular Sessions",
-      marks: Math.floor(Math.random() * 10),
-      outOf: 10,
-    },
-    {
-      subject: "Communication in Sessions",
-      marks: Math.floor(Math.random() * 10),
-      outOf: 10,
-    },
-    {
-      subject: "Test Marks Average",
-      marks: Math.floor(Math.random() * 10),
-      outOf: 10,
-    },
-  ];
 
   const [searchData, setsearchData] = useState();
   const [searchPresses, setsearchPresses] = useState(false);
@@ -93,6 +76,43 @@ export const MainDashBoard = () => {
   const [activites, setactivites] = useState([]);
   const [facultyId, setfacultyId] = useState();
   const [studentImage, setstudentImage] = useState();
+  const [isLoading, setisLoading] = useState(false);
+  const [updateModel, setupdateModel] = useState(false);
+  const [updateButton, setupdateButton] = useState(false);
+  const {register,handleSubmit,reset} = useForm();
+
+
+  const style = {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%, -50%)",
+    width: 400,
+    bgcolor: "background.paper",
+    border: "2px solid #000",
+    boxShadow: 24,
+    pt: 2,
+    px: 4,
+    pb: 3,
+  };
+  //const [open, setOpen] = React.useState(false);
+
+  const handleClose = () => {
+    setupdateModel(false);
+  };
+
+  const submitHandler = async (data) => {
+    setupdateModel(false);
+    data.facultyId = localStorage.getItem("faculty_id");
+    data.studentId = studentData?.studentDetails?._id;
+    console.log("data...", data);
+    const res = await axios.post("/student-report/update", data);
+    console.log("update response...", res);
+    
+      alert("Data updated successfully");
+      setupdateButton(false);
+     
+  };
 
   const handleSuggestionClick = async (suggestion) => {
     // Print the student ID on the console
@@ -103,7 +123,7 @@ export const MainDashBoard = () => {
     // Set the name as the selected suggestion and clear suggestions
     setName(suggestion.name);
     setSuggestions([]);
-
+    setisLoading(true);
     const res = await axios.post(`/student-report/search-by-id`, {
       studentId: suggestion.id,
       facultyId: localStorage.getItem("faculty_id"),
@@ -112,8 +132,11 @@ export const MainDashBoard = () => {
     if (res.data?.length > 0) {
       //alert("No data found");
       setstudentData(res?.data[0]);
+      reset(res?.data[0]);
+      
       console.log("student data...", studentData);
       setstudentImage(res?.data[0]?.studentDetails?.studentImage);
+      setisLoading(false);
       let marks = [
         {
           subject: "Discipline",
@@ -143,6 +166,7 @@ export const MainDashBoard = () => {
       //alert("Total Marks: "+total+"  Final Percentage: "+finalPercentage);
       console.log("marks data...", marks);
       setmarksData(marks);
+      setupdateButton(true);
 
       //activities
 
@@ -151,19 +175,34 @@ export const MainDashBoard = () => {
           activity: "Test Perfomance",
           marks: res?.data[0]?.testPerformance,
           outOf: 5,
-          grade: res?.data[0]?.testPerformance > 4 ? "A" : res?.data[0]?.testPerformance > 3 ? "B" : "C",
+          grade:
+            res?.data[0]?.testPerformance > 4
+              ? "A"
+              : res?.data[0]?.testPerformance > 3
+              ? "B"
+              : "C",
         },
         {
           activity: "Discipline",
           marks: res?.data[0]?.discipline,
           outOf: 5,
-          grade: res?.data[0]?.discipline > 4 ? "A" : res?.data[0]?.discipline > 3 ? "B" : "C",
+          grade:
+            res?.data[0]?.discipline > 4
+              ? "A"
+              : res?.data[0]?.discipline > 3
+              ? "B"
+              : "C",
         },
         {
           activity: "Regular Sessions",
           marks: res?.data[0]?.regularity,
           outOf: 5,
-          grade: res?.data[0]?.regularity > 4 ? "A" : res?.data[0]?.regularity > 3 ? "B" : "C",
+          grade:
+            res?.data[0]?.regularity > 4
+              ? "A"
+              : res?.data[0]?.regularity > 3
+              ? "B"
+              : "C",
         },
       ]);
     }
@@ -221,27 +260,14 @@ export const MainDashBoard = () => {
     formData.append("studentId", studentId);
     formData.append("facultyId", facultyId);
     //formData.append("file", e.target.files[0]);
-    formData.append("file",e.target.files[0]);
-    console.log("file",e.target.files[0]);
+    formData.append("file", e.target.files[0]);
+    console.log("file", e.target.files[0]);
 
     const res = await axios.post("/student/upload-image", formData);
     console.log("image upload response...", res);
     setstudentImage(res.data.studentImage);
   };
 
-  // const searchHandler = async () => {
-  //   console.log(name);
-  //   const res = await axios.post(
-  //     "/student-report/search",
-  //     {
-  //       firstName: name,
-  //       facultyId: "6718af3ab9e64e772962dc62",
-  //     }
-  //   );
-  //   console.log(res.data);
-
-  //   setsearchData(res.data);
-  // };
   const [name, setName] = useState("");
   // Function to generate star rating
   const getStarRating = (marks, outOf) => {
@@ -300,21 +326,9 @@ export const MainDashBoard = () => {
             },
           }}
         />
-        {/* <Button
-          variant="contained"
-          sx={{
-            backgroundColor: "#1A5774",
-            color: "#fff",
-            borderRadius: "20px",
-            padding: "10px 20px",
-            marginLeft: "10px",
-          }}
-          onClick={() => {
-            searchHandler();
-          }}
-        >
-          Search
-        </Button> */}
+
+        {isLoading && <Loader />}
+        {isLoading}
         <Paper
           sx={{
             position: "absolute",
@@ -379,6 +393,91 @@ export const MainDashBoard = () => {
                 elevation={3}
                 sx={{ padding: "16px", marginBottom: "10px", flexGrow: 1 }}
               >
+                <Modal
+                  open={updateModel}
+                  onClose={handleClose}
+                  aria-labelledby="child-modal-title"
+                  aria-describedby="child-modal-description"
+                >
+                  <Box sx={{ ...style, width: 200 }}>
+                    <h2 id="child-modal-title">Update Marks</h2>
+                    <form onSubmit={handleSubmit(submitHandler)}>
+                      <FormControl variant="outlined" fullWidth>
+                        <InputLabel id="discipline-label">
+                          Discipline
+                        </InputLabel>
+                        <Select
+                          labelId="discipline-label"
+                          id="discipline"
+                          label="Discipline"
+                          {...register("discipline")}
+                        >
+                          <MenuItem value={1}>1</MenuItem>
+                          <MenuItem value={2}>2</MenuItem>
+                          <MenuItem value={3}>3</MenuItem>
+                          <MenuItem value={4}>4</MenuItem>
+                          <MenuItem value={5}>5</MenuItem>
+                        </Select>
+                      </FormControl>
+
+                      <FormControl variant="outlined" fullWidth>
+                        <InputLabel id="regularity-label">
+                          Regularity
+                        </InputLabel>
+                        <Select
+                          labelId="regularity-label"
+                          id="regularity"
+                          label="Regularity"
+                          {...register("regularity")}
+                        >
+                          <MenuItem value={1}>1</MenuItem>
+                          <MenuItem value={2}>2</MenuItem>
+                          <MenuItem value={3}>3</MenuItem>
+                          <MenuItem value={4}>4</MenuItem>
+                          <MenuItem value={5}>5</MenuItem>
+                        </Select>
+                      </FormControl>
+                      <FormControl variant="outlined" fullWidth>
+                        <InputLabel id="testPerformance-label">
+                          Regularity
+                        </InputLabel>
+                        <Select
+                          labelId="testPerformance-label"
+                          id="testPerformance"
+                          label="testPerformance"
+                          {...register("testPerformance")}
+                        >
+                          <MenuItem value={1}>1</MenuItem>
+                          <MenuItem value={2}>2</MenuItem>
+                          <MenuItem value={3}>3</MenuItem>
+                          <MenuItem value={4}>4</MenuItem>
+                          <MenuItem value={5}>5</MenuItem>
+                        </Select>
+                      </FormControl>
+                      <FormControl variant="outlined" fullWidth>
+                        <InputLabel id="communication-label">
+                        communication
+                        </InputLabel>
+                        <Select
+                          labelId="regularity-label"
+                          id="communication"
+                          label="communication"
+                          {...register("communication")}
+                        >
+                          <MenuItem value={1}>1</MenuItem>
+                          <MenuItem value={2}>2</MenuItem>
+                          <MenuItem value={3}>3</MenuItem>
+                          <MenuItem value={4}>4</MenuItem>
+                          <MenuItem value={5}>5</MenuItem>
+                        </Select>
+                      </FormControl>
+                      <Button variant="contained" type="submit">Submit</Button>
+                      
+                    </form>
+
+                    <Button onClick={handleClose}>Close</Button>
+                  </Box>
+                </Modal>
                 {/* Student Details Section */}
                 <Grid container spacing={2}>
                   <Grid
@@ -444,6 +543,7 @@ export const MainDashBoard = () => {
                         <PhotoCamera />
                       </IconButton>
                     </Box>
+                   
                   </Grid>
 
                   <Grid item xs={12}>
@@ -511,7 +611,13 @@ export const MainDashBoard = () => {
                   variant="h6"
                 >
                   Marks
+                  {updateButton && (
+                      <IconButton sx={{alignItems:"center"}}>
+                        <EditIcon onClick={() => setupdateModel(true)} />
+                      </IconButton>
+                    )}
                 </Typography>
+                
                 <TableContainer
                   component={Paper}
                   sx={{ marginTop: 2, maxHeight: "300px", overflowY: "auto" }}
@@ -606,45 +712,46 @@ export const MainDashBoard = () => {
                   <Typography variant="h5">{finalScore} %</Typography>
                 </Box>
               </Paper>
-              <Paper elevation={3} sx={{ padding: "16px", marginBottom: "10px" }}>
-  {/* Activities & Conduct Section */}
-  <Typography variant="h6">Activities & Conduct</Typography>
-  {activites.map((item) => {
-    const progressValue = (item.marks / 5) * 100; // Assuming marks are out of 5
+              <Paper
+                elevation={3}
+                sx={{ padding: "16px", marginBottom: "10px" }}
+              >
+                {/* Activities & Conduct Section */}
+                <Typography variant="h6">Activities & Conduct</Typography>
+                {activites.map((item) => {
+                  const progressValue = (item.marks / 5) * 100; // Assuming marks are out of 5
 
-    return (
-      <div key={item.activity}>
-        <Typography>
-          {item.activity}: {item.marks}/5 ({item.grade})
-        </Typography>
-        <LinearProgress
-          variant="determinate"
-          value={progressValue} // Calculate progress out of 5
-          sx={{
-            marginBottom: "10px",
-            "& .MuiLinearProgress-bar": {
-              backgroundColor: "#1A5774",
-            },
-          }}
-        />
-      </div>
-    );
-  })}
-</Paper>
-
+                  return (
+                    <div key={item.activity}>
+                      <Typography>
+                        {item.activity}: {item.marks}/5 ({item.grade})
+                      </Typography>
+                      <LinearProgress
+                        variant="determinate"
+                        value={progressValue} // Calculate progress out of 5
+                        sx={{
+                          marginBottom: "10px",
+                          "& .MuiLinearProgress-bar": {
+                            backgroundColor: "#1A5774",
+                          },
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </Paper>
 
               <Paper
                 elevation={3}
                 sx={{ padding: "16px", flexGrow: 1, marginBottom: "10px" }}
               >
-             
                 <Typography variant="body1" sx={{ marginBottom: 1 }}>
                   Marks Distribution:
                 </Typography>
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={marksData}>
                     <XAxis dataKey="activity" />
-                    <YAxis domain={[0,5]} />
+                    <YAxis domain={[0, 5]} />
                     <Tooltip />
                     <Bar dataKey="marks" fill="#82ca9d" />
                   </BarChart>

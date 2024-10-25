@@ -16,6 +16,7 @@ import { useForm } from "react-hook-form";
 import axios from "axios";
 import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
+import { Loader } from "../components/common/loader/Loader";
 
 
 
@@ -120,11 +121,12 @@ export const Login = () => {
       console.log("faculty....",res.data.data);
       localStorage.setItem("faculty_id", res.data.data._id);
       localStorage.setItem("facultyData", JSON.stringify(res.data.data));
-      
+      setLoading(false); // Hide loader on success
       
         navigate("/");
       
     } catch (err) {
+      setLoading(false); // Hide loader on success
       console.log(err);
       alert("Invalid credentials");
       //setLoading(false); // Hide loader on error
@@ -139,7 +141,7 @@ export const Login = () => {
       {/* Display overlay and loader if loading */}
       {loading && (
         <Overlay>
-          {/* <Loader /> Use your custom Loader component here */}
+          <Loader/>
         </Overlay>
       )}
 
