@@ -1,4 +1,4 @@
-import React, { act, useEffect, useState } from "react";
+import React, { act, useEffect, useState, useRef } from "react";
 import {
   Box,
   Grid,
@@ -21,7 +21,9 @@ import {
   IconButton,
   Modal,
   FormControl,
-  MenuItem, Select, InputLabel,
+  MenuItem,
+  Select,
+  InputLabel,
 } from "@mui/material";
 import {
   BarChart,
@@ -30,7 +32,6 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  
 } from "recharts";
 import myimg from "../../assets/images/samir.jpeg";
 import axios from "axios";
@@ -39,6 +40,11 @@ import { PhotoCamera } from "@mui/icons-material";
 import { set, useForm } from "react-hook-form";
 import { Loader } from "../common/loader/Loader";
 import EditIcon from "@mui/icons-material/Edit";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import logo from "../../assets/logo/royal_logo.png";
+import dp from "../../assets/images/dp.png";
 
 export const MainDashBoard = () => {
   // const marksData = [
@@ -64,6 +70,8 @@ export const MainDashBoard = () => {
   //   },
   // ];
 
+  const pageRef = useRef();
+
   const [marksData, setmarksData] = useState([]);
 
   // Sample extra-curricular data
@@ -79,8 +87,7 @@ export const MainDashBoard = () => {
   const [isLoading, setisLoading] = useState(false);
   const [updateModel, setupdateModel] = useState(false);
   const [updateButton, setupdateButton] = useState(false);
-  const {register,handleSubmit,reset} = useForm();
-
+  const { register, handleSubmit, reset } = useForm();
 
   const style = {
     position: "absolute",
@@ -108,10 +115,9 @@ export const MainDashBoard = () => {
     console.log("data...", data);
     const res = await axios.post("/student-report/update", data);
     console.log("update response...", res);
-    
-      alert("Data updated successfully");
-      setupdateButton(false);
-     
+
+    alert("Data updated successfully");
+    setupdateButton(false);
   };
 
   const handleSuggestionClick = async (suggestion) => {
@@ -133,7 +139,7 @@ export const MainDashBoard = () => {
       //alert("No data found");
       setstudentData(res?.data[0]);
       reset(res?.data[0]);
-      
+
       console.log("student data...", studentData);
       setstudentImage(res?.data[0]?.studentDetails?.studentImage);
       setisLoading(false);
@@ -207,6 +213,69 @@ export const MainDashBoard = () => {
       ]);
     }
   };
+
+  const handlePrint = () => {
+    const input = pageRef.current;
+  
+    // Ensure all images are loaded before generating PDF
+    const loadImages = Array.from(input.querySelectorAll("img")).map(
+      (img) =>
+        new Promise((resolve) => {
+          if (img.complete) {
+            resolve();
+          } else {
+            img.onload = resolve;
+            img.onerror = resolve; // Ignore broken images to continue generating
+          }
+        })
+    );
+  
+    Promise.all(loadImages).then(() => {
+      html2canvas(input, {
+        scale: 2,
+        useCORS: true, // Ensures cross-origin images can be captured
+        allowTaint: true, // Allows tainted canvases (helpful if CORS is strict)
+      }).then((canvas) => {
+        const imgData = canvas.toDataURL("image/png");
+        const pdfName = studentData?.studentDetails?.firstName+".pdf"; // Custom name for both download and email
+        const pdf = new jsPDF({
+          orientation: "portrait",
+          unit: "px",
+          format: [input.offsetWidth, input.offsetHeight],
+        });
+  
+        pdf.addImage(imgData, "PNG", 0, 0, input.offsetWidth, input.offsetHeight);
+  
+        // Save the PDF locally with the custom name
+        pdf.save(pdfName);
+  
+        // Convert the PDF to a blob for sending to backend
+        const pdfBlob = pdf.output("blob");
+  
+        // Prepare FormData for sending the PDF to the backend
+        const formData = new FormData();
+        formData.append("pdf", pdfBlob, pdfName); // Change the name here
+        //formData.append("email", studentData?.studentDetails?.email); // Send email if required by backend
+         formData.append("email", "tejas14all@gmail.com"); // Send email if required by backend
+  
+        // Send the PDF to the backend API
+        axios
+          .post("/student-report/sendpdf", formData, {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          })
+          .then((response) => {
+            console.log("Email sent with PDF:", response.data);
+          })
+          .catch((error) => {
+            console.error("Error sending PDF:", error);
+          });
+      });
+    });
+  };
+  
+  
 
   const handleInputChange = async (e) => {
     const searchText = e.target.value;
@@ -352,8 +421,21 @@ export const MainDashBoard = () => {
           </List>
         </Paper>
       </Box>
+      {updateButton && (
+        <center style={{ marginTop: "20px" }}>
+          <Button
+            sx={{ backgroundColor: "#1A5774" }}
+            startIcon={<PictureAsPdfIcon />}
+            variant="contained"
+            onClick={handlePrint}
+          >
+            Download as PDF
+          </Button>
+        </center>
+      )}
 
       <Box
+        ref={pageRef}
         sx={{
           backgroundColor: "#1A5774",
           borderRadius: 2,
@@ -439,7 +521,7 @@ export const MainDashBoard = () => {
                       </FormControl>
                       <FormControl variant="outlined" fullWidth>
                         <InputLabel id="testPerformance-label">
-                          Regularity
+                          testPerformance
                         </InputLabel>
                         <Select
                           labelId="testPerformance-label"
@@ -456,7 +538,7 @@ export const MainDashBoard = () => {
                       </FormControl>
                       <FormControl variant="outlined" fullWidth>
                         <InputLabel id="communication-label">
-                        communication
+                          communication
                         </InputLabel>
                         <Select
                           labelId="regularity-label"
@@ -471,8 +553,9 @@ export const MainDashBoard = () => {
                           <MenuItem value={5}>5</MenuItem>
                         </Select>
                       </FormControl>
-                      <Button variant="contained" type="submit">Submit</Button>
-                      
+                      <Button variant="contained" type="submit">
+                        Submit
+                      </Button>
                     </form>
 
                     <Button onClick={handleClose}>Close</Button>
@@ -486,8 +569,8 @@ export const MainDashBoard = () => {
                     sx={{ textAlign: "center", marginBottom: "16px" }}
                   >
                     <Typography
-                      variant="h5"
-                      sx={{ color: "#1A5774", fontWeight: "bold" }}
+                      variant="h3"
+                      sx={{ color: "#1A5774", fontWeight: "bold", mt: 4 }}
                     >
                       Student Details
                     </Typography>
@@ -504,18 +587,20 @@ export const MainDashBoard = () => {
                       {/* Conditional rendering for student image */}
                       {studentImage ? (
                         <Box
+                          style={{ marginTop: "50px" }}
                           component="img"
                           src={studentImage}
                           alt="Student"
                           sx={{
                             borderRadius: "50%",
-                            width: { xs: "120px", md: "140px" },
-                            height: { xs: "120px", md: "140px" },
+                            width: { xs: "220px", md: "240px" },
+                            height: { xs: "220px", md: "240px" },
                             objectFit: "cover",
                           }}
                         />
                       ) : (
                         <Avatar
+                          style={{ marginTop: "50px" }}
                           sx={{
                             width: { xs: "120px", md: "140px" },
                             height: { xs: "120px", md: "140px" },
@@ -528,6 +613,7 @@ export const MainDashBoard = () => {
                       )}
 
                       {/* Upload icon for image */}
+                      { updateButton && (
                       <IconButton
                         color="primary"
                         aria-label="upload picture"
@@ -542,55 +628,109 @@ export const MainDashBoard = () => {
                         />
                         <PhotoCamera />
                       </IconButton>
+                      )}
                     </Box>
-                   
                   </Grid>
 
-                  <Grid item xs={12}>
-                    <Grid container spacing={2}>
-                      {/* Adjusting details to show 3x3 layout */}
-                      <Grid item xs={6} sm={4}>
-                        <Typography sx={{ fontWeight: "bold" }}>
-                          Name:
-                        </Typography>
-                        <Typography variant="body1">
-                          {studentData?.studentDetails?.firstName}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6} sm={4}>
-                        <Typography sx={{ fontWeight: "bold" }}>
-                          College:
-                        </Typography>
-                        <Typography variant="body1">
-                          {studentData?.studentDetails?.collageName}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6} sm={4}>
-                        <Typography sx={{ fontWeight: "bold" }}>
-                          Batch:
-                        </Typography>
-                        <Typography variant="body1">
-                          {studentData?.studentDetails?.batch}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6} sm={4}>
-                        <Typography sx={{ fontWeight: "bold" }}>
-                          Mobile:
-                        </Typography>
-                        <Typography variant="body1">
-                          {studentData?.studentDetails?.mobile}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={6} sm={4}>
-                        <Typography sx={{ fontWeight: "bold" }}>
-                          Email:
-                        </Typography>
-                        <Typography
-                          variant="body1"
-                          sx={{ wordBreak: "break-word" }}
-                        >
-                          {studentData?.studentDetails?.email}
-                        </Typography>
+                  <Grid
+                    container
+                    spacing={2}
+                    sx={{ marginTop: 5, paddingX: 2 }} // Top margin and horizontal padding
+                  >
+                    <Grid item xs={12}>
+                      <Grid container spacing={2}>
+                        {/* Individual items with padding and box styling */}
+                        <Grid item xs={6} sm={4}>
+                          <Box
+                            sx={{
+                              padding: 2,
+                              backgroundColor: "#F0F4F8",
+                              borderRadius: 2,
+                              boxShadow: "0px 2px 5px rgba(0,0,0,0.1)",
+                            }}
+                          >
+                            <Typography sx={{ fontWeight: "bold" }}>
+                              Name:
+                            </Typography>
+                            <Typography variant="body1">
+                              {studentData?.studentDetails?.firstName &&
+                                studentData?.studentDetails?.firstName +
+                                  " " +
+                                  studentData?.studentDetails?.lastName}
+                            </Typography>
+                          </Box>
+                        </Grid>
+                        <Grid item xs={6} sm={4}>
+                          <Box
+                            sx={{
+                              padding: 2,
+                              backgroundColor: "#F0F4F8",
+                              borderRadius: 2,
+                              boxShadow: "0px 2px 5px rgba(0,0,0,0.1)",
+                            }}
+                          >
+                            <Typography sx={{ fontWeight: "bold" }}>
+                              College:
+                            </Typography>
+                            <Typography variant="body1">
+                              {studentData?.studentDetails?.collageName}
+                            </Typography>
+                          </Box>
+                        </Grid>
+                        <Grid item xs={6} sm={4}>
+                          <Box
+                            sx={{
+                              padding: 2,
+                              backgroundColor: "#F0F4F8",
+                              borderRadius: 2,
+                              boxShadow: "0px 2px 5px rgba(0,0,0,0.1)",
+                            }}
+                          >
+                            <Typography sx={{ fontWeight: "bold" }}>
+                              Batch:
+                            </Typography>
+                            <Typography variant="body1">
+                              {studentData?.studentDetails?.batch}
+                            </Typography>
+                          </Box>
+                        </Grid>
+                        <Grid item xs={6} sm={4}>
+                          <Box
+                            sx={{
+                              padding: 2,
+                              backgroundColor: "#F0F4F8",
+                              borderRadius: 2,
+                              boxShadow: "0px 2px 5px rgba(0,0,0,0.1)",
+                            }}
+                          >
+                            <Typography sx={{ fontWeight: "bold" }}>
+                              Mobile:
+                            </Typography>
+                            <Typography variant="body1">
+                              {studentData?.studentDetails?.mobile}
+                            </Typography>
+                          </Box>
+                        </Grid>
+                        <Grid item xs={12} sm={8} md={8}>
+                          <Box
+                            sx={{
+                              padding: 2,
+                              backgroundColor: "#F0F4F8",
+                              borderRadius: 2,
+                              boxShadow: "0px 2px 5px rgba(0,0,0,0.1)",
+                            }}
+                          >
+                            <Typography sx={{ fontWeight: "bold" }}>
+                              Email:
+                            </Typography>
+                            <Typography
+                              variant="body1"
+                              sx={{ wordBreak: "break-word" }}
+                            >
+                              {studentData?.studentDetails?.email}
+                            </Typography>
+                          </Box>
+                        </Grid>
                       </Grid>
                     </Grid>
                   </Grid>
@@ -612,12 +752,12 @@ export const MainDashBoard = () => {
                 >
                   Marks
                   {updateButton && (
-                      <IconButton sx={{alignItems:"center"}}>
-                        <EditIcon onClick={() => setupdateModel(true)} />
-                      </IconButton>
-                    )}
+                    <IconButton sx={{ alignItems: "center" }}>
+                      <EditIcon onClick={() => setupdateModel(true)} />
+                    </IconButton>
+                  )}
                 </Typography>
-                
+
                 <TableContainer
                   component={Paper}
                   sx={{ marginTop: 2, maxHeight: "300px", overflowY: "auto" }}
@@ -723,19 +863,28 @@ export const MainDashBoard = () => {
 
                   return (
                     <div key={item.activity}>
-                      <Typography>
-                        {item.activity}: {item.marks}/5 ({item.grade})
-                      </Typography>
-                      <LinearProgress
-                        variant="determinate"
-                        value={progressValue} // Calculate progress out of 5
+                      <Box
                         sx={{
-                          marginBottom: "10px",
-                          "& .MuiLinearProgress-bar": {
-                            backgroundColor: "#1A5774",
-                          },
+                          backgroundColor: "#f0f4f8", // Background color for each activity box
+                          padding: "16px", // Padding inside each box
+                          borderRadius: "8px", // Rounded corners for the box
+                          marginBottom: "12px", // Space between each box
                         }}
-                      />
+                      >
+                        <Typography>
+                          {item.activity}: {item.marks}/5 ({item.grade})
+                        </Typography>
+                        <LinearProgress
+                          variant="determinate"
+                          value={(item.marks / 5) * 100} // Calculate progress as a percentage
+                          sx={{
+                            marginTop: "8px",
+                            "& .MuiLinearProgress-bar": {
+                              backgroundColor: "#1A5774",
+                            },
+                          }}
+                        />
+                      </Box>
                     </div>
                   );
                 })}
@@ -748,13 +897,61 @@ export const MainDashBoard = () => {
                 <Typography variant="body1" sx={{ marginBottom: 1 }}>
                   Marks Distribution:
                 </Typography>
-                <ResponsiveContainer width="100%" height={200}>
+                <ResponsiveContainer
+                  width="100%"
+                  height={200}
+                  style={{ marginTop: "100px" }}
+                >
                   <BarChart data={marksData}>
                     <XAxis dataKey="activity" />
                     <YAxis domain={[0, 5]} />
                     <Tooltip />
-                    <Bar dataKey="marks" fill="#82ca9d" />
+                    <Bar dataKey="marks" fill="#1A5774" />
                   </BarChart>
+                </ResponsiveContainer>
+
+                <ResponsiveContainer
+                  width="100%"
+                  height="auto"
+                  minHeight={200} // Adjusted for two images
+                  maxHeight={300}
+                  style={{ marginTop: "60px" }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column", // Stacks images vertically
+                      alignItems: "center",
+                      justifyContent: "center",
+                      height: "100%",
+                      minHeight: "200px", // Increased minimum height for two images
+                    }}
+                  >
+                    {/* Top Image */}
+                    <Box
+                      component="img"
+                      src={dp} // Top image source
+                      alt="Top Logo"
+                      sx={{
+                        width: "80%", // Responsive width (80% of container)
+                        maxWidth: "150px", // Limit max width
+                        height: "auto", // Maintain aspect ratio
+                        marginBottom: "20px", // Space between images
+                      }}
+                    />
+
+                    {/* Bottom Image */}
+                    <Box
+                      component="img"
+                      src={logo} // Bottom image source
+                      alt="Bottom Logo"
+                      sx={{
+                        width: "80%", // Responsive width (80% of container)
+                        maxWidth: "150px", // Limit max width
+                        height: "auto", // Maintain aspect ratio
+                      }}
+                    />
+                  </Box>
                 </ResponsiveContainer>
               </Paper>
             </Box>
