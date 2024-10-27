@@ -255,8 +255,8 @@ export const MainDashBoard = () => {
         // Prepare FormData for sending the PDF to the backend
         const formData = new FormData();
         formData.append("pdf", pdfBlob, pdfName); // Change the name here
-        //formData.append("email", studentData?.studentDetails?.email); // Send email if required by backend
-         formData.append("email", "tejas14all@gmail.com"); // Send email if required by backend
+        formData.append("email", studentData?.studentDetails?.email); // Send email if required by backend
+         //formData.append("email", "tejas14all@gmail.com"); // Send email if required by backend
   
         // Send the PDF to the backend API
         axios
@@ -267,6 +267,7 @@ export const MainDashBoard = () => {
           })
           .then((response) => {
             console.log("Email sent with PDF:", response.data);
+            alert("Email sent with PDF");
           })
           .catch((error) => {
             console.error("Error sending PDF:", error);
@@ -422,16 +423,17 @@ export const MainDashBoard = () => {
         </Paper>
       </Box>
       {updateButton && (
-        <center style={{ marginTop: "20px" }}>
-          <Button
-            sx={{ backgroundColor: "#1A5774" }}
-            startIcon={<PictureAsPdfIcon />}
-            variant="contained"
-            onClick={handlePrint}
-          >
-            Download as PDF
-          </Button>
-        </center>
+        <></>
+        // <center style={{ marginTop: "20px" }}>
+        //   <Button
+        //     sx={{ backgroundColor: "#1A5774" }}
+        //     startIcon={<PictureAsPdfIcon />}
+        //     variant="contained"
+        //     onClick={handlePrint}
+        //   >
+        //     Download as PDF
+        //   </Button>
+        // </center>
       )}
 
       <Box
@@ -569,10 +571,13 @@ export const MainDashBoard = () => {
                     sx={{ textAlign: "center", marginBottom: "16px" }}
                   >
                     <Typography
-                      variant="h3"
+                      variant="h4"
                       sx={{ color: "#1A5774", fontWeight: "bold", mt: 4 }}
                     >
-                      Student Details
+                       {/* Progress Report of<br></br> {
+                        studentData?.studentDetails?.subject
+                       } */}
+                       Student Detail
                     </Typography>
 
                     {/* Centering image or avatar */}
@@ -631,12 +636,20 @@ export const MainDashBoard = () => {
                       )}
                     </Box>
                   </Grid>
-
+                  <Grid item xs={12}>
+                  {/* <Typography
+                      variant="h5"
+                      sx={{ color: "#1A5774", fontWeight: "bold", mt: 1,textAlign:"center" }} 
+                    >
+                      Student Detail
+                    </Typography> */}
+                  </Grid>
                   <Grid
                     container
                     spacing={2}
-                    sx={{ marginTop: 5, paddingX: 2 }} // Top margin and horizontal padding
+                    sx={{ marginTop: 3, paddingX: 2 }} // Top margin and horizontal padding
                   >
+                    
                     <Grid item xs={12}>
                       <Grid container spacing={2}>
                         {/* Individual items with padding and box styling */}

@@ -3,6 +3,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom"
 import Header from "../header/Header"
 import { MainDashBoard } from "../dashboard/MainDashBoard"
 import {Login} from "../../login/Login"
+import { AddStudent } from "../student/AddStudent"
 
 const MainRouter = ({children}) => {
     const routesData =createBrowserRouter([
@@ -17,6 +18,11 @@ const MainRouter = ({children}) => {
                 {
                     path: "/",
                     element :<MainDashBoard/>,
+                    errorElement: <div>404 Not Found</div>
+                },
+                {
+                    path:"/addstudent",
+                    element:<AddStudent/>,
                     errorElement: <div>404 Not Found</div>
                 }
             ]

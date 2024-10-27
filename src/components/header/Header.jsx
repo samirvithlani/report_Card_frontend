@@ -40,6 +40,8 @@ const Header = () => {
   const logoutHandler = async () => {
     Cookies.remove("token");
     Cookies.remove("faculty_id");
+    localStorage.removeItem("faculty_id");  
+    localStorage.removeItem("facultyData");
     setToken(null);
     navigate("/login");
   };
@@ -63,6 +65,9 @@ const Header = () => {
       <List>
         <ListItem button component={Link} to="/">
           <ListItemText primary="Home" />
+        </ListItem>
+        <ListItem button component={Link} to="/addstudent">
+          <ListItemText primary="Add Student" />
         </ListItem>
         {!token ? (
           <ListItem button component={Link} to="/login">
@@ -137,13 +142,14 @@ const Header = () => {
           </>
         ) : (
           <Box sx={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            {/* {facultyData && (
-              <Typography>
-                {facultyData?.firstName && facultyData?.lastName
-                  ? `${facultyData.firstName} ${facultyData.lastName}`
-                  : "Faculty"}
-              </Typography>
-            )} */}
+            <Button
+              component={Link}
+              to="/addstudent"
+              variant="outlined"
+              sx={{ color: "black", borderColor: "black" }}
+            >
+              Add Student
+            </Button>
             {!token ? (
               <Button
                 component={Link}
