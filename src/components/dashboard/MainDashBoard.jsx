@@ -47,29 +47,7 @@ import logo from "../../assets/logo/royal_logo.png";
 import dp from "../../assets/images/dp.png";
 
 export const MainDashBoard = () => {
-  // const marksData = [
-  //   {
-  //     subject: "Punctuality",
-  //     marks: Math.floor(Math.random() * 10),
-  //     outOf: 10,
-  //   },
-  //   {
-  //     subject: "Regular Sessions",
-  //     marks: Math.floor(Math.random() * 10),
-  //     outOf: 10,
-  //   },
-  //   {
-  //     subject: "Communication in Sessions",
-  //     marks: Math.floor(Math.random() * 10),
-  //     outOf: 10,
-  //   },
-  //   {
-  //     subject: "Test Marks Average",
-  //     marks: Math.floor(Math.random() * 100),
-  //     outOf: 100,
-  //   },
-  // ];
-
+ 
   const pageRef = useRef();
 
   const [marksData, setmarksData] = useState([]);
@@ -423,17 +401,17 @@ export const MainDashBoard = () => {
         </Paper>
       </Box>
       {updateButton && (
-        <></>
-        // <center style={{ marginTop: "20px" }}>
-        //   <Button
-        //     sx={{ backgroundColor: "#1A5774" }}
-        //     startIcon={<PictureAsPdfIcon />}
-        //     variant="contained"
-        //     onClick={handlePrint}
-        //   >
-        //     Download as PDF
-        //   </Button>
-        // </center>
+        
+        <center style={{ marginTop: "20px" }}>
+          <Button
+            sx={{ backgroundColor: "#1A5774" }}
+            startIcon={<PictureAsPdfIcon />}
+            variant="contained"
+            onClick={handlePrint}
+          >
+            Download as PDF
+          </Button>
+        </center>
       )}
 
       <Box

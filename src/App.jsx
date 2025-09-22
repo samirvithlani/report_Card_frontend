@@ -7,7 +7,7 @@ import axios from 'axios'
 
 function App() {
   const [count, setCount] = useState(0)
-axios.defaults.baseURL = "https://report-card-backend-l3id.onrender.com/"
+axios.defaults.baseURL = "https://report-card-backend-clone.onrender.com"
 //axios.defaults.baseURL = "http://localhost:3000/"
   return (
     <>
