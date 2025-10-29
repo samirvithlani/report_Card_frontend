@@ -4,12 +4,19 @@ import Header from "../header/Header"
 import { MainDashBoard } from "../dashboard/MainDashBoard"
 import {Login} from "../../login/Login"
 import { AddStudent } from "../student/AddStudent"
+import MockPdf from "../MockPdf"
+import { StudentList } from "../dashboard/StudentList"
+import { AllStudents } from "../dashboard/AllStudents"
 
 const MainRouter = ({children}) => {
     const routesData =createBrowserRouter([
         {
             path:"/login",
             element:<Login/>
+        },
+        {
+            path:"/mockpdf",
+            element:<MockPdf/>  
         },
         {
             path:"/",
@@ -24,6 +31,16 @@ const MainRouter = ({children}) => {
                     path:"/addstudent",
                     element:<AddStudent/>,
                     errorElement: <div>404 Not Found</div>
+                },
+                {
+                    path:"/studentlist",
+                    element:<StudentList/>,
+                    errorElement:<div>ERROR</div>
+                },
+                {
+                    path:"/allstudents",
+                    element:<AllStudents/>,
+                    errorElement:<div>Error</div>
                 }
             ]
         }

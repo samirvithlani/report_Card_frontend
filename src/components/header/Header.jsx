@@ -40,7 +40,7 @@ const Header = () => {
   const logoutHandler = async () => {
     Cookies.remove("token");
     Cookies.remove("faculty_id");
-    localStorage.removeItem("faculty_id");  
+    localStorage.removeItem("faculty_id");
     localStorage.removeItem("facultyData");
     setToken(null);
     navigate("/login");
@@ -68,6 +68,12 @@ const Header = () => {
         </ListItem>
         <ListItem button component={Link} to="/addstudent">
           <ListItemText primary="Add Student" />
+        </ListItem>
+        <ListItem button component={Link} to="/studentlist">
+          <ListItemText primary="My Students" />
+        </ListItem>
+        <ListItem button component={Link} to="/allstudents">
+          <ListItemText primary="All Students" />
         </ListItem>
         {!token ? (
           <ListItem button component={Link} to="/login">
@@ -142,6 +148,7 @@ const Header = () => {
           </>
         ) : (
           <Box sx={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            
             <Button
               component={Link}
               to="/addstudent"
@@ -149,6 +156,22 @@ const Header = () => {
               sx={{ color: "black", borderColor: "black" }}
             >
               Add Student
+            </Button>
+            <Button
+              component={Link}
+              to="/studentlist"
+              variant="outlined"
+              sx={{ color: "black", borderColor: "black" }}
+            >
+              My Students
+            </Button>
+             <Button
+              component={Link}
+              to="/allstudents"
+              variant="outlined"
+              sx={{ color: "black", borderColor: "black" }}
+            >
+              All Students
             </Button>
             {!token ? (
               <Button
@@ -168,6 +191,13 @@ const Header = () => {
               >
                 Logout
               </Button>
+            )}
+            {facultyData && (
+              <Typography variant="h5">
+                {facultyData?.firstName && facultyData?.lastName
+                  ? `${facultyData.firstName} ${facultyData.lastName}`
+                  : "Faculty"}
+              </Typography>
             )}
           </Box>
         )}

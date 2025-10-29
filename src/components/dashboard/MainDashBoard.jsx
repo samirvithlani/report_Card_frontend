@@ -1,61 +1,46 @@
-import React, { act, useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   Box,
   Grid,
   Paper,
-  Typography,
-  CircularProgress,
-  LinearProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Button,
   List,
   ListItem,
   ListItemText,
-  Avatar,
-  IconButton,
   Modal,
   FormControl,
   MenuItem,
   Select,
   InputLabel,
+  Fade,
+  Backdrop,
+  InputAdornment,
+  Typography,
+  Divider,
+  Chip,
 } from "@mui/material";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import myimg from "../../assets/images/samir.jpeg";
-import axios from "axios";
-import { useNavigate } from "react-router-dom";
-import { PhotoCamera } from "@mui/icons-material";
-import { set, useForm } from "react-hook-form";
+import SearchIcon from "@mui/icons-material/Search";
+import DownloadIcon from "@mui/icons-material/Download";
+import { useForm } from "react-hook-form";
 import { Loader } from "../common/loader/Loader";
-import EditIcon from "@mui/icons-material/Edit";
+import { StudentDetail } from "./StudentDetail";
+import { StudentMarks } from "./StudentMarks";
+import { FinalScore } from "./FinalScore";
+import { ActivitesAndConduct } from "./ActivitesAndConduct";
+import { MarksDistrubution } from "./MarksDistrubution";
+import axios from "axios";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import logo from "../../assets/logo/royal_logo.png";
-import dp from "../../assets/images/dp.png";
+import { useNavigate } from "react-router-dom";
 
 export const MainDashBoard = () => {
- 
+  const navigate = useNavigate()
   const pageRef = useRef();
-
+  const printRef = useRef();
   const [marksData, setmarksData] = useState([]);
-
-  // Sample extra-curricular data
-
   const [searchData, setsearchData] = useState();
-  const [searchPresses, setsearchPresses] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [studentData, setstudentData] = useState({});
   const [finalScore, setfinalScore] = useState(0);
@@ -65,22 +50,20 @@ export const MainDashBoard = () => {
   const [isLoading, setisLoading] = useState(false);
   const [updateModel, setupdateModel] = useState(false);
   const [updateButton, setupdateButton] = useState(false);
+  const [name, setName] = useState("");
   const { register, handleSubmit, reset } = useForm();
 
-  const style = {
+  const modalStyle = {
     position: "absolute",
     top: "50%",
     left: "50%",
     transform: "translate(-50%, -50%)",
-    width: 400,
+    width: { xs: "90%", sm: 450 },
     bgcolor: "background.paper",
-    border: "2px solid #000",
-    boxShadow: 24,
-    pt: 2,
-    px: 4,
-    pb: 3,
+    borderRadius: "16px",
+    boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+    p: 4,
   };
-  //const [open, setOpen] = React.useState(false);
 
   const handleClose = () => {
     setupdateModel(false);
@@ -93,66 +76,111 @@ export const MainDashBoard = () => {
     console.log("data...", data);
     const res = await axios.post("/student-report/update", data);
     console.log("update response...", res);
-
     alert("Data updated successfully");
     setupdateButton(false);
   };
 
-  const handleSuggestionClick = async (suggestion) => {
-    // Print the student ID on the console
-    console.log("Selected suggestion:", suggestion);
-    console.log("Student ID:", suggestion.id); // Log the ID
-    console.log(suggestion.name.split("  ")); // If you want to split the name as well
+  const handleDownloadPDF = () => {
+    const input = printRef.current;
 
-    // Set the name as the selected suggestion and clear suggestions
+    const loadImages = Array.from(input.querySelectorAll("img")).map(
+      (img) =>
+        new Promise((resolve) => {
+          if (img.complete) {
+            resolve();
+          } else {
+            img.onload = resolve;
+            img.onerror = resolve;
+          }
+        })
+    );
+
+    Promise.all(loadImages).then(() => {
+      html2canvas(input, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+      }).then((canvas) => {
+        const imgData = canvas.toDataURL("image/png");
+        const pdf = new jsPDF({
+          orientation: "landscape",
+          unit: "mm",
+          format: "a4",
+        });
+
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = canvas.width;
+        const imgHeight = canvas.height;
+        const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+        const imgX = (pdfWidth - imgWidth * ratio) / 2;
+        const imgY = 0;
+
+        pdf.addImage(
+          imgData,
+          "PNG",
+          imgX,
+          imgY,
+          imgWidth * ratio,
+          imgHeight * ratio
+        );
+
+        const pdfName = `${studentData?.studentDetails?.firstName}_Report.pdf`;
+        pdf.save(pdfName);
+      });
+    });
+  };
+
+  const handleSuggestionClick = async (suggestion) => {
+    console.log("Selected suggestion:", suggestion);
+    console.log("Student ID:", suggestion.id);
+
     setName(suggestion.name);
     setSuggestions([]);
     setisLoading(true);
+
     const res = await axios.post(`/student-report/search-by-id`, {
       studentId: suggestion.id,
       facultyId: localStorage.getItem("faculty_id"),
     });
+
     console.log("student data response...", res.data);
+
     if (res.data?.length > 0) {
-      //alert("No data found");
       setstudentData(res?.data[0]);
       reset(res?.data[0]);
-
-      console.log("student data...", studentData);
       setstudentImage(res?.data[0]?.studentDetails?.studentImage);
       setisLoading(false);
+
       let marks = [
         {
           subject: "Discipline",
-          marks: res?.data[0]?.discipline, // Replace with actual field from the response
+          marks: res?.data[0]?.discipline,
           outOf: 5,
         },
         {
           subject: "Regular Sessions",
-          marks: res?.data[0]?.regularity, // Replace with actual field from the response
+          marks: res?.data[0]?.regularity,
           outOf: 5,
         },
         {
           subject: "Communication in Sessions",
-          marks: res?.data[0]?.communication, // Replace with actual field from the response
+          marks: res?.data[0]?.communication,
           outOf: 5,
         },
         {
           subject: "Test Performance",
-          marks: res?.data[0]?.testPerformance, // Replace with actual field from the response
+          marks: res?.data[0]?.testPerformance,
           outOf: 5,
         },
       ];
+
       var total = marks.reduce((total, item) => total + item.marks, 0);
       var finalPercentage = (total / 20) * 100;
       setfinalScore(finalPercentage);
-      //console.log("final percentage...",finalPercentage);
-      //alert("Total Marks: "+total+"  Final Percentage: "+finalPercentage);
-      console.log("marks data...", marks);
       setmarksData(marks);
       setupdateButton(true);
-
-      //activities
 
       setactivites([
         {
@@ -160,9 +188,9 @@ export const MainDashBoard = () => {
           marks: res?.data[0]?.testPerformance,
           outOf: 5,
           grade:
-            res?.data[0]?.testPerformance > 4
+            res?.data[0]?.avgTestPerformance > 4
               ? "A"
-              : res?.data[0]?.testPerformance > 3
+              : res?.data[0]?.avgTestPerformance > 3
               ? "B"
               : "C",
         },
@@ -192,75 +220,9 @@ export const MainDashBoard = () => {
     }
   };
 
-  const handlePrint = () => {
-    const input = pageRef.current;
-  
-    // Ensure all images are loaded before generating PDF
-    const loadImages = Array.from(input.querySelectorAll("img")).map(
-      (img) =>
-        new Promise((resolve) => {
-          if (img.complete) {
-            resolve();
-          } else {
-            img.onload = resolve;
-            img.onerror = resolve; // Ignore broken images to continue generating
-          }
-        })
-    );
-  
-    Promise.all(loadImages).then(() => {
-      html2canvas(input, {
-        scale: 2,
-        useCORS: true, // Ensures cross-origin images can be captured
-        allowTaint: true, // Allows tainted canvases (helpful if CORS is strict)
-      }).then((canvas) => {
-        const imgData = canvas.toDataURL("image/png");
-        const pdfName = studentData?.studentDetails?.firstName+".pdf"; // Custom name for both download and email
-        const pdf = new jsPDF({
-          orientation: "portrait",
-          unit: "px",
-          format: [input.offsetWidth, input.offsetHeight],
-        });
-  
-        pdf.addImage(imgData, "PNG", 0, 0, input.offsetWidth, input.offsetHeight);
-  
-        // Save the PDF locally with the custom name
-        pdf.save(pdfName);
-  
-        // Convert the PDF to a blob for sending to backend
-        const pdfBlob = pdf.output("blob");
-  
-        // Prepare FormData for sending the PDF to the backend
-        const formData = new FormData();
-        formData.append("pdf", pdfBlob, pdfName); // Change the name here
-        formData.append("email", studentData?.studentDetails?.email); // Send email if required by backend
-         //formData.append("email", "tejas14all@gmail.com"); // Send email if required by backend
-  
-        // Send the PDF to the backend API
-        axios
-          .post("/student-report/sendpdf", formData, {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          })
-          .then((response) => {
-            console.log("Email sent with PDF:", response.data);
-            alert("Email sent with PDF");
-          })
-          .catch((error) => {
-            console.error("Error sending PDF:", error);
-          });
-      });
-    });
-  };
-  
-  
-
   const handleInputChange = async (e) => {
     const searchText = e.target.value;
     setName(searchText);
-
-    console.log(name);
 
     try {
       const res = await axios.post("/student-report/search", {
@@ -268,11 +230,9 @@ export const MainDashBoard = () => {
         facultyId: localStorage.getItem("faculty_id"),
       });
 
-      console.log(res.data);
       setsearchData(res.data);
 
       if (searchText) {
-        // Filter by first name and create an object with name and id
         const filteredSuggestions = res.data
           .filter((suggestion) =>
             suggestion.studentDetails.firstName
@@ -286,10 +246,10 @@ export const MainDashBoard = () => {
               suggestion.studentDetails.lastName +
               "  Mobile  " +
               suggestion.studentDetails.mobile,
-            id: suggestion.studentDetails._id, // Include the ID here
+            id: suggestion.studentDetails._id,
           }));
 
-        setSuggestions(filteredSuggestions); // Store suggestions with names and IDs
+        setSuggestions(filteredSuggestions);
       } else {
         setSuggestions([]);
       }
@@ -299,30 +259,37 @@ export const MainDashBoard = () => {
   };
 
   const handleUploadImage = async (e) => {
+    console.log("here... ")
     const studentId = studentData?.studentDetails?._id;
-    console.log("student id...", studentId);
     const facultyId = localStorage.getItem("faculty_id");
-    console.log("faculty id...", facultyId);
 
     const formData = new FormData();
     formData.append("studentId", studentId);
     formData.append("facultyId", facultyId);
-    //formData.append("file", e.target.files[0]);
     formData.append("file", e.target.files[0]);
-    console.log("file", e.target.files[0]);
 
     const res = await axios.post("/student/upload-image", formData);
-    console.log("image upload response...", res);
+    console.log(res)
     setstudentImage(res.data.studentImage);
   };
 
-  const [name, setName] = useState("");
-  // Function to generate star rating
   const getStarRating = (marks, outOf) => {
-    const rating = Math.round((marks / outOf) * 5); // Convert to a scale of 5
-    return "★".repeat(rating) + "☆".repeat(5 - rating); // Return stars based on rating
+    const rating = Math.round((marks / outOf) * 5);
+    return "★".repeat(rating) + "☆".repeat(5 - rating);
   };
-  const navigate = useNavigate();
+
+  const getGradeColor = (grade) => {
+    switch (grade) {
+      case "A":
+        return "#10b981";
+      case "B":
+        return "#f59e0b";
+      case "C":
+        return "#ef4444";
+      default:
+        return "#6b7280";
+    }
+  };
 
   useEffect(() => {
     const facultyId = localStorage.getItem("faculty_id");
@@ -335,620 +302,558 @@ export const MainDashBoard = () => {
   }, []);
 
   return (
-    <Box>
+    <Box sx={{ minHeight: "100vh", bgcolor: "#f5f7fa" }}>
+      {/* Enhanced Search Header */}
       <Box
         sx={{
-          display: "flex",
-          justifyContent: "center",
-          padding: "20px",
+          background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+          padding: { xs: "24px 16px", md: "32px 24px" },
           position: "sticky",
           top: 0,
-          backgroundColor: "#fff",
-          zIndex: 1,
+          zIndex: 100,
+          boxShadow: "0 4px 20px rgba(99, 102, 241, 0.15)",
         }}
       >
-        <TextField
-          variant="outlined"
-          placeholder="Search..."
-          onChange={handleInputChange}
-          sx={{
-            width: { xs: "80%", sm: "50%", md: "30%" },
-            "& .MuiOutlinedInput-root": {
-              borderRadius: "20px",
-              "& fieldset": {
-                borderColor: "#1A5774", // Default border color
+        <Box sx={{ maxWidth: "1400px", margin: "0 auto" }}>
+          <TextField
+            value={name}
+            variant="outlined"
+            placeholder="Search student by name..."
+            onChange={handleInputChange}
+            fullWidth
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ color: "#6366f1" }} />
+                </InputAdornment>
+              ),
+            }}
+            sx={{
+              maxWidth: "600px",
+              margin: "0 auto",
+              display: "block",
+              bgcolor: "white",
+              borderRadius: "12px",
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "12px",
+                "& fieldset": {
+                  borderColor: "transparent",
+                },
+                "&:hover fieldset": {
+                  borderColor: "#6366f1",
+                },
+                "&.Mui-focused fieldset": {
+                  borderColor: "#6366f1",
+                  borderWidth: "2px",
+                },
               },
-              "&:hover fieldset": {
-                borderColor: "#1A5774", // Border color on hover
-              },
-              "&.Mui-focused fieldset": {
-                borderColor: "#1A5774", // Border color when focused
-              },
-            },
-            "& .MuiInputBase-input": {
-              color: "#1A5774", // Input text color
-            },
-            "& .MuiOutlinedInput-root .MuiInputBase-input::placeholder": {
-              color: "#1A5774", // Placeholder color
-              opacity: 1, // Ensures the placeholder color applies correctly
-            },
-          }}
-        />
+            }}
+          />
 
-        {isLoading && <Loader />}
-        {isLoading}
-        <Paper
+          {isLoading && <Loader />}
+
+          {suggestions.length > 0 && (
+            <Paper
+              elevation={8}
+              sx={{
+                position: "absolute",
+                top: "100%",
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: { xs: "90%", md: "600px" },
+                maxWidth: "600px",
+                mt: 1,
+                maxHeight: "300px",
+                overflowY: "auto",
+                borderRadius: "12px",
+                boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+              }}
+            >
+              <List sx={{ p: 0 }}>
+                {suggestions.map((suggestion, index) => (
+                  <ListItem
+                    button
+                    key={index}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    sx={{
+                      transition: "all 0.2s",
+                      "&:hover": {
+                        bgcolor: "#f5f3ff",
+                        borderLeft: "4px solid #6366f1",
+                      },
+                      borderBottom: "1px solid #f0f0f0",
+                    }}
+                  >
+                    <ListItemText
+                      primary={suggestion.name}
+                      primaryTypographyProps={{
+                        fontSize: "0.95rem",
+                        color: "#333",
+                      }}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </Paper>
+          )}
+        </Box>
+      </Box>
+
+      {/* Download Button */}
+      {updateButton && (
+        <Box
           sx={{
-            position: "absolute",
-            top: "80px",
-            width: "80%",
-            zIndex: 10,
-            maxHeight: "200px",
-            overflowY: "auto",
+            display: "flex",
+            justifyContent: "center",
+            padding: "20px",
           }}
         >
-          <List>
-            {suggestions.map((suggestion, index) => (
-              <ListItem
-                button
-                key={index}
-                onClick={() => handleSuggestionClick(suggestion)}
-              >
-                <ListItemText primary={suggestion.name} />
-              </ListItem>
-            ))}
-          </List>
-        </Paper>
-      </Box>
-      {updateButton && (
-        
-        <center style={{ marginTop: "20px" }}>
           <Button
-            sx={{ backgroundColor: "#1A5774" }}
-            startIcon={<PictureAsPdfIcon />}
             variant="contained"
-            onClick={handlePrint}
+            startIcon={<DownloadIcon />}
+            onClick={handleDownloadPDF}
+            sx={{
+              bgcolor: "#6366f1",
+              borderRadius: "12px",
+              textTransform: "none",
+              px: 4,
+              py: 1.5,
+              fontSize: "1rem",
+              fontWeight: 500,
+              "&:hover": {
+                bgcolor: "#4f46e5",
+              },
+            }}
           >
-            Download as PDF
+            Download Report
           </Button>
-        </center>
+        </Box>
       )}
 
+      {/* Main Content */}
       <Box
         ref={pageRef}
         sx={{
-          backgroundColor: "#1A5774",
-          borderRadius: 2,
-          margin: { xs: "10px", md: "20px", lg: "40px" },
-          height: "100vh",
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "center",
-          position: "relative",
-          overflow: "hidden",
-          overflowY: "auto",
-          overflowX: "hidden",
+          maxWidth: "1400px",
+          margin: "0 auto",
+          padding: { xs: "16px", md: "32px" },
         }}
       >
-        <Grid
-          container
-          spacing={2}
-          sx={{
-            flex: 1,
-            overflowY: "auto",
-            height: "100%",
-            maxWidth: { xs: "100%", md: "1200px", lg: "1400px" },
-          }}
-        >
-          {/* First Grid Column (8 width) */}
-          <Grid item xs={12} sm={8}>
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                height: "100%",
-                padding: "10px",
-                boxSizing: "border-box",
-              }}
-            >
+        <Grid container spacing={3}>
+          {/* Left Column */}
+          <Grid item xs={12} lg={8}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
               <Paper
-                elevation={3}
-                sx={{ padding: "16px", marginBottom: "10px", flexGrow: 1 }}
+                elevation={0}
+                sx={{
+                  padding: { xs: "20px", md: "28px" },
+                  borderRadius: "16px",
+                  border: "1px solid #e8eef2",
+                  transition: "all 0.3s",
+                  "&:hover": {
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+                  },
+                }}
               >
-                <Modal
-                  open={updateModel}
-                  onClose={handleClose}
-                  aria-labelledby="child-modal-title"
-                  aria-describedby="child-modal-description"
-                >
-                  <Box sx={{ ...style, width: 200 }}>
-                    <h2 id="child-modal-title">Update Marks</h2>
-                    <form onSubmit={handleSubmit(submitHandler)}>
-                      <FormControl variant="outlined" fullWidth>
-                        <InputLabel id="discipline-label">
-                          Discipline
-                        </InputLabel>
-                        <Select
-                          labelId="discipline-label"
-                          id="discipline"
-                          label="Discipline"
-                          {...register("discipline")}
-                        >
-                          <MenuItem value={1}>1</MenuItem>
-                          <MenuItem value={2}>2</MenuItem>
-                          <MenuItem value={3}>3</MenuItem>
-                          <MenuItem value={4}>4</MenuItem>
-                          <MenuItem value={5}>5</MenuItem>
-                        </Select>
-                      </FormControl>
-
-                      <FormControl variant="outlined" fullWidth>
-                        <InputLabel id="regularity-label">
-                          Regularity
-                        </InputLabel>
-                        <Select
-                          labelId="regularity-label"
-                          id="regularity"
-                          label="Regularity"
-                          {...register("regularity")}
-                        >
-                          <MenuItem value={1}>1</MenuItem>
-                          <MenuItem value={2}>2</MenuItem>
-                          <MenuItem value={3}>3</MenuItem>
-                          <MenuItem value={4}>4</MenuItem>
-                          <MenuItem value={5}>5</MenuItem>
-                        </Select>
-                      </FormControl>
-                      <FormControl variant="outlined" fullWidth>
-                        <InputLabel id="testPerformance-label">
-                          testPerformance
-                        </InputLabel>
-                        <Select
-                          labelId="testPerformance-label"
-                          id="testPerformance"
-                          label="testPerformance"
-                          {...register("testPerformance")}
-                        >
-                          <MenuItem value={1}>1</MenuItem>
-                          <MenuItem value={2}>2</MenuItem>
-                          <MenuItem value={3}>3</MenuItem>
-                          <MenuItem value={4}>4</MenuItem>
-                          <MenuItem value={5}>5</MenuItem>
-                        </Select>
-                      </FormControl>
-                      <FormControl variant="outlined" fullWidth>
-                        <InputLabel id="communication-label">
-                          communication
-                        </InputLabel>
-                        <Select
-                          labelId="regularity-label"
-                          id="communication"
-                          label="communication"
-                          {...register("communication")}
-                        >
-                          <MenuItem value={1}>1</MenuItem>
-                          <MenuItem value={2}>2</MenuItem>
-                          <MenuItem value={3}>3</MenuItem>
-                          <MenuItem value={4}>4</MenuItem>
-                          <MenuItem value={5}>5</MenuItem>
-                        </Select>
-                      </FormControl>
-                      <Button variant="contained" type="submit">
-                        Submit
-                      </Button>
-                    </form>
-
-                    <Button onClick={handleClose}>Close</Button>
-                  </Box>
-                </Modal>
-                {/* Student Details Section */}
-                <Grid container spacing={2}>
-                  <Grid
-                    item
-                    xs={12}
-                    sx={{ textAlign: "center", marginBottom: "16px" }}
-                  >
-                    <Typography
-                      variant="h4"
-                      sx={{ color: "#1A5774", fontWeight: "bold", mt: 4 }}
-                    >
-                       {/* Progress Report of<br></br> {
-                        studentData?.studentDetails?.subject
-                       } */}
-                       Student Detail
-                    </Typography>
-
-                    {/* Centering image or avatar */}
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        flexDirection: "column",
-                      }}
-                    >
-                      {/* Conditional rendering for student image */}
-                      {studentImage ? (
-                        <Box
-                          style={{ marginTop: "50px" }}
-                          component="img"
-                          src={studentImage}
-                          alt="Student"
-                          sx={{
-                            borderRadius: "50%",
-                            width: { xs: "220px", md: "240px" },
-                            height: { xs: "220px", md: "240px" },
-                            objectFit: "cover",
-                          }}
-                        />
-                      ) : (
-                        <Avatar
-                          style={{ marginTop: "50px" }}
-                          sx={{
-                            width: { xs: "120px", md: "140px" },
-                            height: { xs: "120px", md: "140px" },
-                            fontSize: "50px",
-                            backgroundColor: "#1A5774",
-                          }}
-                        >
-                          {studentData?.studentDetails?.firstName?.charAt(0)}
-                        </Avatar>
-                      )}
-
-                      {/* Upload icon for image */}
-                      { updateButton && (
-                      <IconButton
-                        color="primary"
-                        aria-label="upload picture"
-                        component="label"
-                        sx={{ mt: 2 }}
-                      >
-                        <input
-                          hidden
-                          accept="image/*"
-                          type="file"
-                          onChange={handleUploadImage}
-                        />
-                        <PhotoCamera />
-                      </IconButton>
-                      )}
-                    </Box>
-                  </Grid>
-                  <Grid item xs={12}>
-                  {/* <Typography
-                      variant="h5"
-                      sx={{ color: "#1A5774", fontWeight: "bold", mt: 1,textAlign:"center" }} 
-                    >
-                      Student Detail
-                    </Typography> */}
-                  </Grid>
-                  <Grid
-                    container
-                    spacing={2}
-                    sx={{ marginTop: 3, paddingX: 2 }} // Top margin and horizontal padding
-                  >
-                    
-                    <Grid item xs={12}>
-                      <Grid container spacing={2}>
-                        {/* Individual items with padding and box styling */}
-                        <Grid item xs={6} sm={4}>
-                          <Box
-                            sx={{
-                              padding: 2,
-                              backgroundColor: "#F0F4F8",
-                              borderRadius: 2,
-                              boxShadow: "0px 2px 5px rgba(0,0,0,0.1)",
-                            }}
-                          >
-                            <Typography sx={{ fontWeight: "bold" }}>
-                              Name:
-                            </Typography>
-                            <Typography variant="body1">
-                              {studentData?.studentDetails?.firstName &&
-                                studentData?.studentDetails?.firstName +
-                                  " " +
-                                  studentData?.studentDetails?.lastName}
-                            </Typography>
-                          </Box>
-                        </Grid>
-                        <Grid item xs={6} sm={4}>
-                          <Box
-                            sx={{
-                              padding: 2,
-                              backgroundColor: "#F0F4F8",
-                              borderRadius: 2,
-                              boxShadow: "0px 2px 5px rgba(0,0,0,0.1)",
-                            }}
-                          >
-                            <Typography sx={{ fontWeight: "bold" }}>
-                              College:
-                            </Typography>
-                            <Typography variant="body1">
-                              {studentData?.studentDetails?.collageName}
-                            </Typography>
-                          </Box>
-                        </Grid>
-                        <Grid item xs={6} sm={4}>
-                          <Box
-                            sx={{
-                              padding: 2,
-                              backgroundColor: "#F0F4F8",
-                              borderRadius: 2,
-                              boxShadow: "0px 2px 5px rgba(0,0,0,0.1)",
-                            }}
-                          >
-                            <Typography sx={{ fontWeight: "bold" }}>
-                              Batch:
-                            </Typography>
-                            <Typography variant="body1">
-                              {studentData?.studentDetails?.batch}
-                            </Typography>
-                          </Box>
-                        </Grid>
-                        <Grid item xs={6} sm={4}>
-                          <Box
-                            sx={{
-                              padding: 2,
-                              backgroundColor: "#F0F4F8",
-                              borderRadius: 2,
-                              boxShadow: "0px 2px 5px rgba(0,0,0,0.1)",
-                            }}
-                          >
-                            <Typography sx={{ fontWeight: "bold" }}>
-                              Mobile:
-                            </Typography>
-                            <Typography variant="body1">
-                              {studentData?.studentDetails?.mobile}
-                            </Typography>
-                          </Box>
-                        </Grid>
-                        <Grid item xs={12} sm={8} md={8}>
-                          <Box
-                            sx={{
-                              padding: 2,
-                              backgroundColor: "#F0F4F8",
-                              borderRadius: 2,
-                              boxShadow: "0px 2px 5px rgba(0,0,0,0.1)",
-                            }}
-                          >
-                            <Typography sx={{ fontWeight: "bold" }}>
-                              Email:
-                            </Typography>
-                            <Typography
-                              variant="body1"
-                              sx={{ wordBreak: "break-word" }}
-                            >
-                              {studentData?.studentDetails?.email}
-                            </Typography>
-                          </Box>
-                        </Grid>
-                      </Grid>
-                    </Grid>
-                  </Grid>
-                </Grid>
+                <StudentDetail
+                  studentImage={studentImage}
+                  studentData={studentData}
+                  updateButton={updateButton}
+                  handleUploadImage={handleUploadImage}
+                />
               </Paper>
 
-              <Paper
-                elevation={3}
-                sx={{ padding: "16px", marginBottom: "10px", flexGrow: 1 }}
-              >
-                {/* Subjects Marks Section */}
-                <Typography
-                  sx={{
-                    textAlign: "center",
-                    color: "#1A5774",
-                    fontWeight: "bold",
-                  }}
-                  variant="h6"
-                >
-                  Marks
-                  {updateButton && (
-                    <IconButton sx={{ alignItems: "center" }}>
-                      <EditIcon onClick={() => setupdateModel(true)} />
-                    </IconButton>
-                  )}
-                </Typography>
-
-                <TableContainer
-                  component={Paper}
-                  sx={{ marginTop: 2, maxHeight: "300px", overflowY: "auto" }}
-                >
-                  <Table stickyHeader>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: "bold" }}>
-                          Subject
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }} align="right">
-                          Marks
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }} align="right">
-                          Out of
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }} align="right">
-                          Rating
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {marksData.map((item, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{item.subject}</TableCell>
-                          <TableCell align="right">{item.marks}</TableCell>
-                          <TableCell align="right">{item.outOf}</TableCell>
-                          <TableCell align="right">
-                            {getStarRating(item.marks, item.outOf)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {/* Calculate Total and Out Of */}
-                      <TableRow>
-                        <TableCell>
-                          <strong>Total</strong>
-                        </TableCell>
-                        <TableCell align="right">
-                          <strong>
-                            {marksData.reduce(
-                              (total, item) => total + item.marks,
-                              0
-                            )}
-                          </strong>
-                        </TableCell>
-                        <TableCell align="right">
-                          <strong>
-                            {marksData.reduce(
-                              (total, item) => total + item.outOf,
-                              0
-                            )}
-                          </strong>
-                        </TableCell>
-                        <TableCell align="right"></TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Paper>
+              <StudentMarks
+                updateModel={updateModel}
+                setupdateModel={setupdateModel}
+                marksData={marksData}
+                updateButton={updateButton}
+                getStarRating={getStarRating}
+              />
             </Box>
           </Grid>
 
-          {/* Second Grid Column (4 width) */}
-          <Grid item xs={12} sm={4}>
+          {/* Right Column */}
+          <Grid item xs={12} lg={4}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              <FinalScore finalScore={finalScore} />
+              <ActivitesAndConduct activites={activites} />
+              <MarksDistrubution marksData={marksData} />
+            </Box>
+          </Grid>
+        </Grid>
+      </Box>
+
+      {/* Hidden PDF Template - A4 Landscape */}
+      <Box
+        ref={printRef}
+        sx={{
+          position: "absolute",
+          left: "-9999px",
+          width: "297mm",
+          height: "210mm",
+          bgcolor: "white",
+          padding: "20mm",
+          boxSizing: "border-box",
+        }}
+      >
+        {/* Header */}
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 3,
+            pb: 2,
+            borderBottom: "3px solid #6366f1",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <img
+              src={logo}
+              alt="Logo"
+              style={{ height: "60px", objectFit: "contain" }}
+            />
+            <Box>
+              <Typography
+                variant="h4"
+                sx={{ fontWeight: 700, color: "#6366f1", mb: 0.5 }}
+              >
+                Student Performance Report
+              </Typography>
+              <Typography variant="body2" sx={{ color: "#6b7280" }}>
+                Academic Progress & Evaluation
+              </Typography>
+            </Box>
+          </Box>
+          <Chip
+            label={`Score: ${finalScore.toFixed(1)}%`}
+            sx={{
+              bgcolor: finalScore >= 80 ? "#10b981" : finalScore >= 60 ? "#f59e0b" : "#ef4444",
+              color: "white",
+              fontWeight: 700,
+              fontSize: "1.1rem",
+              height: "40px",
+              px: 2,
+            }}
+          />
+        </Box>
+
+        {/* Student Info Section */}
+        <Box sx={{ display: "flex", gap: 3, mb: 3 }}>
+          <Box sx={{ flex: 1 }}>
             <Box
               sx={{
                 display: "flex",
-                flexDirection: "column",
-                height: "100%",
-                padding: "10px",
-                boxSizing: "border-box",
+                alignItems: "center",
+                gap: 3,
+                bgcolor: "#f8f9ff",
+                p: 2.5,
+                borderRadius: "12px",
+                border: "2px solid #e0e7ff",
               }}
             >
-              <Paper
-                elevation={3}
-                sx={{ padding: "16px", marginBottom: "10px" }}
-              >
-                {/* Final Score Section */}
-                <Typography variant="h6">Final Score</Typography>
+              {studentImage && (
                 <Box
                   sx={{
+                    width: "100px",
+                    height: "100px",
+                    borderRadius: "12px",
+                    overflow: "hidden",
+                    border: "3px solid #6366f1",
+                    flexShrink: 0,
+                  }}
+                >
+                  <img
+                    src={studentImage}
+                    alt="Student"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                </Box>
+              )}
+              <Box sx={{ flex: 1 }}>
+                <Typography
+                  variant="h5"
+                  sx={{ fontWeight: 700, color: "#1f2937", mb: 1 }}
+                >
+                  {studentData?.studentDetails?.firstName}{" "}
+                  {studentData?.studentDetails?.lastName}
+                </Typography>
+                <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1 }}>
+                  <Typography variant="body2" sx={{ color: "#6b7280" }}>
+                    <strong>Email:</strong> {studentData?.studentDetails?.email}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: "#6b7280" }}>
+                    <strong>Mobile:</strong> {studentData?.studentDetails?.mobile}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: "#6b7280" }}>
+                    <strong>Grade:</strong> {studentData?.studentDetails?.grade}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: "#6b7280" }}>
+                    <strong>Subject:</strong> {studentData?.studentDetails?.subject}
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+
+        {/* Performance Metrics */}
+        <Box sx={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 3 }}>
+          {/* Left: Detailed Marks */}
+          <Box>
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 700, color: "#1f2937", mb: 2 }}
+            >
+              Performance Breakdown
+            </Typography>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {marksData.map((item, index) => (
+                <Box
+                  key={index}
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    p: 2,
+                    bgcolor: "#f9fafb",
+                    borderRadius: "8px",
+                    border: "1px solid #e5e7eb",
+                  }}
+                >
+                  <Typography
+                    sx={{ fontWeight: 600, color: "#374151", flex: 1 }}
+                  >
+                    {item.subject}
+                  </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Typography
+                      sx={{
+                        fontSize: "1.2rem",
+                        color: "#fbbf24",
+                      }}
+                    >
+                      {getStarRating(item.marks, item.outOf)}
+                    </Typography>
+                    <Chip
+                      label={`${item.marks}/${item.outOf}`}
+                      size="small"
+                      sx={{
+                        bgcolor: "#6366f1",
+                        color: "white",
+                        fontWeight: 600,
+                        minWidth: "60px",
+                      }}
+                    />
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+
+          {/* Right: Grades Summary */}
+          <Box>
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 700, color: "#1f2937", mb: 2 }}
+            >
+              Grade Summary
+            </Typography>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {activites.map((activity, index) => (
+                <Box
+                  key={index}
+                  sx={{
+                    p: 2,
+                    bgcolor: "#f9fafb",
+                    borderRadius: "8px",
+                    border: "1px solid #e5e7eb",
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
                   }}
                 >
-                  <CircularProgress
-                    variant="determinate"
-                    value={finalScore}
-                    sx={{ color: "#1A5774" }}
-                  />
-                  <Typography variant="h5">{finalScore} %</Typography>
-                </Box>
-              </Paper>
-              <Paper
-                elevation={3}
-                sx={{ padding: "16px", marginBottom: "10px" }}
-              >
-                {/* Activities & Conduct Section */}
-                <Typography variant="h6">Activities & Conduct</Typography>
-                {activites.map((item) => {
-                  const progressValue = (item.marks / 5) * 100; // Assuming marks are out of 5
-
-                  return (
-                    <div key={item.activity}>
-                      <Box
-                        sx={{
-                          backgroundColor: "#f0f4f8", // Background color for each activity box
-                          padding: "16px", // Padding inside each box
-                          borderRadius: "8px", // Rounded corners for the box
-                          marginBottom: "12px", // Space between each box
-                        }}
-                      >
-                        <Typography>
-                          {item.activity}: {item.marks}/5 ({item.grade})
-                        </Typography>
-                        <LinearProgress
-                          variant="determinate"
-                          value={(item.marks / 5) * 100} // Calculate progress as a percentage
-                          sx={{
-                            marginTop: "8px",
-                            "& .MuiLinearProgress-bar": {
-                              backgroundColor: "#1A5774",
-                            },
-                          }}
-                        />
-                      </Box>
-                    </div>
-                  );
-                })}
-              </Paper>
-
-              <Paper
-                elevation={3}
-                sx={{ padding: "16px", flexGrow: 1, marginBottom: "10px" }}
-              >
-                <Typography variant="body1" sx={{ marginBottom: 1 }}>
-                  Marks Distribution:
-                </Typography>
-                <ResponsiveContainer
-                  width="100%"
-                  height={200}
-                  style={{ marginTop: "100px" }}
-                >
-                  <BarChart data={marksData}>
-                    <XAxis dataKey="activity" />
-                    <YAxis domain={[0, 5]} />
-                    <Tooltip />
-                    <Bar dataKey="marks" fill="#1A5774" />
-                  </BarChart>
-                </ResponsiveContainer>
-
-                <ResponsiveContainer
-                  width="100%"
-                  height="auto"
-                  minHeight={200} // Adjusted for two images
-                  maxHeight={300}
-                  style={{ marginTop: "60px" }}
-                >
+                  <Typography
+                    sx={{ fontWeight: 600, color: "#374151", fontSize: "0.9rem" }}
+                  >
+                    {activity.activity}
+                  </Typography>
                   <Box
                     sx={{
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "8px",
+                      bgcolor: getGradeColor(activity.grade),
                       display: "flex",
-                      flexDirection: "column", // Stacks images vertically
                       alignItems: "center",
                       justifyContent: "center",
-                      height: "100%",
-                      minHeight: "200px", // Increased minimum height for two images
+                      color: "white",
+                      fontWeight: 700,
+                      fontSize: "1.2rem",
                     }}
                   >
-                    {/* Top Image */}
-                    <Box
-                      component="img"
-                      src={dp} // Top image source
-                      alt="Top Logo"
-                      sx={{
-                        width: "80%", // Responsive width (80% of container)
-                        maxWidth: "150px", // Limit max width
-                        height: "auto", // Maintain aspect ratio
-                        marginBottom: "20px", // Space between images
-                      }}
-                    />
-
-                    {/* Bottom Image */}
-                    <Box
-                      component="img"
-                      src={logo} // Bottom image source
-                      alt="Bottom Logo"
-                      sx={{
-                        width: "80%", // Responsive width (80% of container)
-                        maxWidth: "150px", // Limit max width
-                        height: "auto", // Maintain aspect ratio
-                      }}
-                    />
+                    {activity.grade}
                   </Box>
-                </ResponsiveContainer>
-              </Paper>
+                </Box>
+              ))}
             </Box>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
+
+        {/* Footer */}
+        <Box
+          sx={{
+            position: "absolute",
+            bottom: "15mm",
+            left: "20mm",
+            right: "20mm",
+            pt: 2,
+            borderTop: "2px solid #e5e7eb",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Typography variant="body2" sx={{ color: "#6b7280" }}>
+            Generated on: {new Date().toLocaleDateString()}
+          </Typography>
+          <Typography variant="body2" sx={{ color: "#6b7280", fontWeight: 600 }}>
+            Silver OAK
+          </Typography>
+        </Box>
       </Box>
+
+      {/* Enhanced Modal */}
+      <Modal
+        open={updateModel}
+        onClose={handleClose}
+        closeAfterTransition
+        BackdropComponent={Backdrop}
+        BackdropProps={{
+          timeout: 500,
+          sx: { bgcolor: "rgba(0, 0, 0, 0.5)" },
+        }}
+      >
+        <Fade in={updateModel}>
+          <Box sx={modalStyle}>
+            <h2
+              style={{
+                margin: "0 0 24px 0",
+                color: "#6366f1",
+                fontSize: "1.5rem",
+                fontWeight: 600,
+              }}
+            >
+              Update Marks
+            </h2>
+            <form onSubmit={handleSubmit(submitHandler)}>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <FormControl variant="outlined" fullWidth>
+                  <InputLabel>Discipline</InputLabel>
+                  <Select
+                    label="Discipline"
+                    {...register("discipline")}
+                    sx={{ borderRadius: "8px" }}
+                  >
+                    {[1, 2, 3, 4, 5].map((val) => (
+                      <MenuItem key={val} value={val}>
+                        {val}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <FormControl variant="outlined" fullWidth>
+                  <InputLabel>Regularity</InputLabel>
+                  <Select
+                    label="Regularity"
+                    {...register("regularity")}
+                    sx={{ borderRadius: "8px" }}
+                  >
+                    {[1, 2, 3, 4, 5].map((val) => (
+                      <MenuItem key={val} value={val}>
+                        {val}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <FormControl variant="outlined" fullWidth>
+                  <InputLabel>Test Performance</InputLabel>
+                  <Select
+                    label="Test Performance"
+                    {...register("testPerformance")}
+                    sx={{ borderRadius: "8px" }}
+                  >
+                    {[1, 2, 3, 4, 5].map((val) => (
+                      <MenuItem key={val} value={val}>
+                        {val}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <FormControl variant="outlined" fullWidth>
+                  <InputLabel>Communication</InputLabel>
+                  <Select
+                    label="Communication"
+                    {...register("communication")}
+                    sx={{ borderRadius: "8px" }}
+                  >
+                    {[1, 2, 3, 4, 5].map((val) => (
+                      <MenuItem key={val} value={val}>
+                        {val}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
+                  <Button
+                    variant="contained"
+                    type="submit"
+                    fullWidth
+                    sx={{
+                      bgcolor: "#6366f1",
+                      borderRadius: "8px",
+                      textTransform: "none",
+                      py: 1.2,
+                      "&:hover": {
+                        bgcolor: "#4f46e5",
+                      },
+                    }}
+                  >
+                    Submit
+                  </Button>
+                  <Button
+                    onClick={handleClose}
+                    variant="outlined"
+                    fullWidth
+                    sx={{
+                      borderColor: "#6366f1",
+                      color: "#6366f1",
+                      borderRadius: "8px",
+                      textTransform: "none",
+                      py: 1.2,
+                      "&:hover": {
+                        borderColor: "#4f46e5",
+                        bgcolor: "#f5f3ff",
+                      },
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </Box>
+              </Box>
+            </form>
+          </Box>
+        </Fade>
+      </Modal>
     </Box>
   );
 };
