@@ -51,17 +51,17 @@ export const MarksDistrubution = ({marksData}) => {
           }}
         >
           {/* Top Image */}
-          <Box
+          {/* <Box
             component="img"
-            src={dp} // Top image source
-            alt="Top Logo"
+            //src={dp} // Top image source
+            //alt="Top Logo"
             sx={{
               width: "80%", // Responsive width (80% of container)
               maxWidth: "150px", // Limit max width
               height: "auto", // Maintain aspect ratio
               marginBottom: "20px", // Space between images
             }}
-          />
+          /> */}
 
           {/* Bottom Image */}
           <Box
